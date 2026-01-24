@@ -1,0 +1,9 @@
+*.psdtoolkit
+*.aup2
+*.scene
+*.object
+*.code-workspace
+.github/*
+obj/*
+.vs/*
+bin/*
