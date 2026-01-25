@@ -19,6 +19,7 @@
 #include <dwrite_3.h>
 #include <wrl/client.h>
 using Microsoft::WRL::ComPtr;
+#include <regex>
 
 #include "filter2.h"
 #include "logger2.h"
@@ -44,6 +45,18 @@ std::vector<DWRITE_FONT_AXIS_VALUE> g_cachedAxisValues;
 std::wstring g_cachedAxisFontKey;
 bool g_axisCacheValid = false;
 LOG_HANDLE *logger;
+// per-rule font cache
+struct FontResources;
+std::unordered_map<std::wstring, FontResources> g_ruleFontCache;
+
+// mixRules text buffer owned by plugin when edited via external editor
+static wchar_t *g_mixRulesBuf = nullptr;
+
+
+void InvalidateRuleFontCache()
+{
+	g_ruleFontCache.clear();
+}
 
 //---------------------------------------------------------------------
 //	前方宣言
@@ -144,6 +157,14 @@ const AxisControl kAxisControls[] = {
 };
 
 // レイアウトグループ
+// --- 混植設定 (mixRules) ---
+// GUI: チェック / エディタボタン / ルール保持用テキスト
+auto group_mix = FILTER_ITEM_GROUP(L"混植", false);
+auto mixEnabled = FILTER_ITEM_CHECK(L"混植を有効", false);
+// button callback assigned after function definition
+auto mixRulesText = FILTER_ITEM_TEXT(L"混植ルール (JSON)", L"");
+auto group_mix_end = FILTER_ITEM_GROUP(L"");
+
 auto group_layout = FILTER_ITEM_GROUP(L"レイアウト");
 // 0 を指定するとテキスト内容から自動算出する
 auto imageWidth = FILTER_ITEM_TRACK(L"横幅", 0, 0, 8192, 1);
@@ -180,6 +201,8 @@ void *items[] = {
 	&group_outline, &outlineEnabled, &outlineColor, &outlineWidth, &outlineStyle, &outlineFill, &group_outline_end,
 
 	&group_variable, &weight, &width_axis, &slant, &opsz, &ital_axis, &grad_axis, &xtra_axis, &xopq_axis, &yopq_axis, &ytlc_axis, &ytuc_axis, &ytas_axis, &ytde_axis, &ytfi_axis, &axisUpdateMode, &group_variable_end,
+
+	&group_mix, &mixEnabled, &mixRulesText, &group_mix_end,
 
 	&group_layout, &imageWidth, &imageHeight, &textAlign, &lineSpacing, &group_layout_end,
 
@@ -260,6 +283,7 @@ EXTERN_C __declspec(dllexport) void UninitializePlugin()
 	g_d2dDevice.Reset();
 	g_dwriteFactory.Reset();
 	g_d2dFactory.Reset();
+	if (g_mixRulesBuf) { delete [] g_mixRulesBuf; g_mixRulesBuf = nullptr; }
 }
 
 //---------------------------------------------------------------------
@@ -346,6 +370,236 @@ void EnsureAxisCacheKey(const std::wstring &fontKey)
 		g_cachedAxisFontKey = fontKey;
 		InvalidateAxisCache();
 	}
+}
+
+//---------------------------------------------------------------------
+// Mix rules (JSON) parsing
+//---------------------------------------------------------------------
+struct MixRule
+{
+	std::wstring pattern; // simple category or regex (user-defined)
+	std::wstring font;    // font file path or family specifier
+	float sizeRatio = 1.0f;
+	float tracking = 0.0f;
+	float baseline = 0.0f;
+	std::unordered_map<std::wstring, float> axes; // axis tag string -> value
+};
+
+// forward declarations for functions defined later
+void GetSupportedAxes(IDWriteFontFace5 *fontFace, std::unordered_set<DWRITE_FONT_AXIS_TAG> &supportedTags, std::unordered_map<DWRITE_FONT_AXIS_TAG, DWRITE_FONT_AXIS_RANGE> &ranges);
+float ClampAxisValue(const DWRITE_FONT_AXIS_RANGE &range, double value);
+
+static inline void skipWhitespace(const std::wstring &s, size_t &i)
+{
+	while (i < s.size() && iswspace(s[i])) ++i;
+}
+
+static bool parseJSONString(const std::wstring &s, size_t &i, std::wstring &out)
+{
+	out.clear();
+	skipWhitespace(s, i);
+	if (i >= s.size() || s[i] != L'"') return false;
+	++i;
+	while (i < s.size())
+	{
+		wchar_t c = s[i++];
+		if (c == L'\\' && i < s.size())
+		{
+			wchar_t e = s[i++];
+			if (e == L'n') out.push_back(L'\n');
+			else if (e == L'r') out.push_back(L'\r');
+			else if (e == L't') out.push_back(L'\t');
+			else out.push_back(e);
+		}
+		else if (c == L'"')
+		{
+			return true;
+		}
+		else
+		{
+			out.push_back(c);
+		}
+	}
+	return false;
+}
+
+static bool parseJSONNumber(const std::wstring &s, size_t &i, double &out)
+{
+	skipWhitespace(s, i);
+	size_t start = i;
+	if (i < s.size() && (s[i] == L'-' || s[i] == L'+')) ++i;
+	while (i < s.size() && (iswdigit(s[i]) || s[i] == L'.' || s[i] == L'e' || s[i] == L'E' || s[i] == L'+' || s[i] == L'-')) ++i;
+	if (start == i) return false;
+	try {
+		out = std::stod(std::wstring(s.begin() + start, s.begin() + i));
+		return true;
+	} catch (...) {
+		return false;
+	}
+}
+
+// Very small, tolerant JSON array of objects parser tailored for expected rule schema.
+bool ParseMixRules(std::vector<MixRule> &outRules)
+{
+	outRules.clear();
+	const wchar_t *text = reinterpret_cast<const wchar_t *>(mixRulesText.value);
+	if (!text) return true; // empty is ok
+	std::wstring s = text;
+	size_t i = 0;
+	skipWhitespace(s, i);
+	if (i >= s.size() || s[i] != L'[') return true; // not an array, treat as empty
+	++i;
+	while (i < s.size())
+	{
+		skipWhitespace(s, i);
+		if (i < s.size() && s[i] == L']') { ++i; break; }
+		if (i >= s.size() || s[i] != L'{') break;
+		++i;
+		MixRule rule;
+		while (i < s.size())
+		{
+			skipWhitespace(s, i);
+			if (i < s.size() && s[i] == L'}') { ++i; break; }
+			// read key
+			std::wstring key;
+			if (!parseJSONString(s, i, key)) { break; }
+			skipWhitespace(s, i);
+			if (i >= s.size() || s[i] != L':') break;
+			++i;
+			skipWhitespace(s, i);
+			if (key == L"pattern")
+			{
+				std::wstring v;
+				if (parseJSONString(s, i, v)) rule.pattern = v;
+			}
+			else if (key == L"font")
+			{
+				std::wstring v;
+				if (parseJSONString(s, i, v)) rule.font = v;
+			}
+			else if (key == L"size")
+			{
+				double val = 0.0;
+				if (parseJSONNumber(s, i, val)) rule.sizeRatio = static_cast<float>(val);
+			}
+			else if (key == L"tracking")
+			{
+				double val = 0.0;
+				if (parseJSONNumber(s, i, val)) rule.tracking = static_cast<float>(val);
+			}
+			else if (key == L"baseline")
+			{
+				double val = 0.0;
+				if (parseJSONNumber(s, i, val)) rule.baseline = static_cast<float>(val);
+			}
+			else if (key == L"axes")
+			{
+				// expect object
+				skipWhitespace(s, i);
+				if (i < s.size() && s[i] == L'{') { ++i; }
+				while (i < s.size())
+				{
+					skipWhitespace(s, i);
+					if (i < s.size() && s[i] == L'}') { ++i; break; }
+					std::wstring axisKey;
+					if (!parseJSONString(s, i, axisKey)) break;
+					skipWhitespace(s, i);
+					if (i >= s.size() || s[i] != L':') break;
+					++i;
+					double val = 0.0;
+					if (parseJSONNumber(s, i, val))
+					{
+						rule.axes[axisKey] = static_cast<float>(val);
+					}
+					skipWhitespace(s, i);
+					if (i < s.size() && s[i] == L',') { ++i; continue; }
+				}
+			}
+			else
+			{
+				// unknown key: try skip value (string or number or object/array)
+				skipWhitespace(s, i);
+				if (i < s.size() && s[i] == L'"') { std::wstring dummy; parseJSONString(s, i, dummy); }
+				else if (i < s.size() && (s[i] == L'{' || s[i] == L'['))
+				{
+					wchar_t open = s[i++]; wchar_t close = (open == L'{') ? L'}' : L']';
+					int depth = 1;
+					while (i < s.size() && depth > 0)
+					{
+						if (s[i] == open) ++depth;
+						else if (s[i] == close) --depth;
+						++i;
+					}
+				}
+				else { double dummy; parseJSONNumber(s, i, dummy); }
+			}
+
+			skipWhitespace(s, i);
+			if (i < s.size() && s[i] == L',') { ++i; continue; }
+		}
+
+		// minimal validation
+		if (!rule.pattern.empty() && !rule.font.empty())
+		{
+			outRules.push_back(rule);
+		}
+
+		skipWhitespace(s, i);
+		if (i < s.size() && s[i] == L',') { ++i; continue; }
+	}
+
+	return true;
+}
+
+// Utility: write wide string to temp file as UTF-16LE with BOM
+static bool WriteTempUtf16File(const std::wstring &path, const std::wstring &text)
+{
+	HANDLE h = CreateFileW(path.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+	if (h == INVALID_HANDLE_VALUE) return false;
+	// BOM
+	DWORD written = 0;
+	WORD bom = 0xFEFF;
+	WriteFile(h, &bom, sizeof(bom), &written, nullptr);
+	// write wchar_t buffer (UTF-16LE)
+	WriteFile(h, text.c_str(), static_cast<DWORD>(text.size() * sizeof(wchar_t)), &written, nullptr);
+	CloseHandle(h);
+	return true;
+}
+
+// Utility: read file and convert to std::wstring (detect BOM utf-16le/utf8)
+static bool ReadFileToWString(const std::wstring &path, std::wstring &out)
+{
+	out.clear();
+	HANDLE h = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+	if (h == INVALID_HANDLE_VALUE) return false;
+	DWORD sz = GetFileSize(h, nullptr);
+	if (sz == INVALID_FILE_SIZE) { CloseHandle(h); return false; }
+	std::vector<char> buf(sz);
+	DWORD read = 0;
+	ReadFile(h, buf.data(), sz, &read, nullptr);
+	CloseHandle(h);
+	if (read == 0) return true;
+	// BOM check
+	if (read >= 2 && static_cast<unsigned char>(buf[0]) == 0xFF && static_cast<unsigned char>(buf[1]) == 0xFE)
+	{
+		// UTF-16LE
+		size_t wcCount = (read - 2) / sizeof(wchar_t);
+		out.resize(wcCount);
+		memcpy(&out[0], buf.data() + 2, wcCount * sizeof(wchar_t));
+		return true;
+	}
+	// UTF-8 (with or w/o BOM)
+	const char *p = buf.data();
+	size_t off = 0;
+	if (read >= 3 && static_cast<unsigned char>(buf[0]) == 0xEF && static_cast<unsigned char>(buf[1]) == 0xBB && static_cast<unsigned char>(buf[2]) == 0xBF)
+		off = 3;
+	int required = MultiByteToWideChar(CP_UTF8, 0, p + off, static_cast<int>(read - off), nullptr, 0);
+	if (required > 0)
+	{
+		out.resize(required);
+		MultiByteToWideChar(CP_UTF8, 0, p + off, static_cast<int>(read - off), &out[0], required);
+	}
+	return true;
 }
 
 const wchar_t *GetInputText()
@@ -542,6 +796,46 @@ bool ResolveFontResources(FontResources &out)
 	return true;
 }
 
+// Resolve font resources for an arbitrary key (file path or family name).
+// Caches results per-key to avoid repeated loading.
+bool ResolveFontResourcesForKey(const std::wstring &key, FontResources &out)
+{
+	if (key.empty())
+		return false;
+
+	auto it = g_ruleFontCache.find(key);
+	if (it != g_ruleFontCache.end())
+	{
+		out = it->second;
+		return true;
+	}
+
+	// Determine if key is a file path (exists) or a family name.
+	DWORD attr = GetFileAttributesW(key.c_str());
+	bool isFile = (attr != INVALID_FILE_ATTRIBUTES && !(attr & FILE_ATTRIBUTE_DIRECTORY));
+
+	FontResources temp;
+	bool loaded = false;
+	if (isFile)
+	{
+		loaded = LoadFontFromFile(key.c_str(), temp);
+	}
+	else
+	{
+		// treat as family name
+		loaded = LoadSystemFontFamily(key, temp);
+	}
+
+	if (!loaded)
+	{
+		return false;
+	}
+
+	g_ruleFontCache[key] = temp;
+	out = temp;
+	return true;
+}
+
 void GetSupportedAxes(
 	IDWriteFontFace5 *fontFace,
 	std::unordered_set<DWRITE_FONT_AXIS_TAG> &supportedTags,
@@ -660,6 +954,118 @@ void CollectAxisValuesForLayout(IDWriteFontFace5 *fontFace, const std::wstring &
 		g_axisCacheValid = true;
 	}
 }
+
+// Helper: convert 4-char axis name (e.g. L"wght") to DWRITE_FONT_AXIS_TAG
+static DWRITE_FONT_AXIS_TAG AxisTagFromString(const std::wstring &s)
+{
+	if (s.size() != 4) return static_cast<DWRITE_FONT_AXIS_TAG>(0);
+	return static_cast<DWRITE_FONT_AXIS_TAG>(DWRITE_MAKE_FONT_AXIS_TAG(
+		static_cast<char>(s[0]),
+		static_cast<char>(s[1]),
+		static_cast<char>(s[2]),
+		static_cast<char>(s[3])));
+}
+
+// Build axis value array from a rule (clamped to supported ranges)
+static void BuildAxisValuesFromRule(IDWriteFontFace5 *fontFace, const MixRule &rule, std::vector<DWRITE_FONT_AXIS_VALUE> &out)
+{
+	out.clear();
+	if (!fontFace) return;
+
+	std::unordered_set<DWRITE_FONT_AXIS_TAG> supportedTags;
+	std::unordered_map<DWRITE_FONT_AXIS_TAG, DWRITE_FONT_AXIS_RANGE> ranges;
+	GetSupportedAxes(fontFace, supportedTags, ranges);
+
+	for (const auto &p : rule.axes)
+	{
+		DWRITE_FONT_AXIS_TAG tag = AxisTagFromString(p.first);
+		if (tag == static_cast<DWRITE_FONT_AXIS_TAG>(0)) continue;
+		if (supportedTags.find(tag) == supportedTags.end()) continue;
+		float val = static_cast<float>(p.second);
+		auto it = ranges.find(tag);
+		if (it != ranges.end())
+		{
+			val = ClampAxisValue(it->second, val);
+		}
+		DWRITE_FONT_AXIS_VALUE av = {};
+		av.axisTag = tag;
+		av.value = val;
+		out.push_back(av);
+	}
+}
+
+// Apply parsed mix rules to an IDWriteTextLayout3 by mapping matches to DWRITE_TEXT_RANGE
+static void ApplyMixRangesToLayout(IDWriteTextLayout3 *layout3, const wchar_t *text, const std::vector<MixRule> &rules)
+{
+	if (!layout3 || !text) return;
+	std::wstring stext = text;
+
+	for (const auto &rule : rules)
+	{
+		if (rule.pattern.empty() || rule.font.empty())
+			continue;
+
+		// Resolve font resources for this rule
+		FontResources fr;
+		if (!ResolveFontResourcesForKey(rule.font, fr))
+			continue;
+
+		// Build axis values for this rule & font (currently not applied if API missing)
+		std::vector<DWRITE_FONT_AXIS_VALUE> axisValues;
+		BuildAxisValuesFromRule(fr.fontFace.Get(), rule, axisValues);
+
+		// Prepare regex or literal search
+		bool useRegex = false;
+		std::wstring body = rule.pattern;
+		if (body.size() >= 2 && body.front() == L'/' && body.back() == L'/')
+		{
+			useRegex = true;
+			body = body.substr(1, body.size() - 2);
+		}
+
+		if (useRegex)
+		{
+			try
+			{
+				std::wregex re(body);
+				auto begin = std::wsregex_iterator(stext.begin(), stext.end(), re);
+				auto end = std::wsregex_iterator();
+				for (auto it = begin; it != end; ++it)
+				{
+					std::wsmatch m = *it;
+					size_t pos = static_cast<size_t>(m.position());
+					size_t len = static_cast<size_t>(m.length());
+					if (len == 0) continue;
+					DWRITE_TEXT_RANGE range = { static_cast<UINT32>(pos), static_cast<UINT32>(len) };
+
+					if (fr.fontCollection) layout3->SetFontCollection(fr.fontCollection.Get(), range);
+					if (!fr.familyName.empty()) layout3->SetFontFamilyName(fr.familyName.c_str(), range);
+					layout3->SetFontSize(static_cast<FLOAT>(fontSize.value * rule.sizeRatio), range);
+				}
+			}
+			catch (...) { /* invalid regex -> skip */ }
+		}
+		else
+		{
+			size_t pos = 0;
+			while (true)
+			{
+				pos = stext.find(body, pos);
+				if (pos == std::wstring::npos) break;
+				size_t len = body.size();
+				if (len == 0) { ++pos; continue; }
+				DWRITE_TEXT_RANGE range = { static_cast<UINT32>(pos), static_cast<UINT32>(len) };
+
+				if (fr.fontCollection) layout3->SetFontCollection(fr.fontCollection.Get(), range);
+				if (!fr.familyName.empty()) layout3->SetFontFamilyName(fr.familyName.c_str(), range);
+				layout3->SetFontSize(static_cast<FLOAT>(fontSize.value * rule.sizeRatio), range);
+
+				pos += len;
+			}
+		}
+	}
+}
+
 
 //---------------------------------------------------------------------
 //	ヘルパー関数: 文字揃え設定
@@ -784,6 +1190,18 @@ bool CreateTextLayout(float layoutWidth, float layoutHeight, ComPtr<IDWriteTextL
 		&outLayout);
 	if (FAILED(hr))
 		return false;
+
+	// Apply mix rules (per-range font/axis/size) if enabled
+	ComPtr<IDWriteTextLayout3> layout3;
+	outLayout.As(&layout3);
+	if (layout3 && mixEnabled.value)
+	{
+		std::vector<MixRule> rules;
+		if (ParseMixRules(rules) && !rules.empty())
+		{
+			ApplyMixRangesToLayout(layout3.Get(), text, rules);
+		}
+	}
 
 	// 字間設定
 	if (charSpacing.value != 0.0)
