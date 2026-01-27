@@ -104,6 +104,8 @@ auto outlineFill = FILTER_ITEM_CHECK(L"塗りつぶし", true);
 auto group_outline_end = FILTER_ITEM_GROUP(L"");
 
 // バリアブル軸グループ
+// バリアブルフォントの各種軸を設定する。
+// 軸の自動追加には対応していないため、よく使われる軸をあらかじめ用意している。
 auto group_variable = FILTER_ITEM_GROUP(L"バリアブル軸", false);
 auto weight = FILTER_ITEM_TRACK(L"Weight", 400, 100, 900, 1);
 auto width_axis = FILTER_ITEM_TRACK(L"Width", 100, 50, 200, 1);
@@ -195,7 +197,7 @@ void *items[] = {
 FILTER_PLUGIN_TABLE filter_plugin_table = {
 	FILTER_PLUGIN_TABLE::FLAG_VIDEO | FILTER_PLUGIN_TABLE::FLAG_INPUT, // フラグ
 	L"Variable Font Text",											   // プラグインの名前
-	L"テキスト(VF)",												   // ラベルの初期値
+	L"黒猫大福",												   // ラベルの初期値
 	L"Variable Font Text Object v1.0",								   // プラグインの情報
 	items,															   // 設定項目の定義
 	func_proc_video,												   // 画像フィルタ処理関数へのポインタ
@@ -283,6 +285,7 @@ enum class FontSource
 	Default
 };
 
+// フォント項目からフォントファミリ名を取得
 const wchar_t *GetFamilyInput()
 {
 	const wchar_t *name = reinterpret_cast<const wchar_t *>(fontFamilyInput.value);
@@ -293,8 +296,10 @@ const wchar_t *GetFamilyInput()
 	return nullptr;
 }
 
+// フォントキーを構築する
 std::wstring BuildFontKey(FontSource &source, std::wstring &familyOut)
 {
+	// フォントファイルが指定されている場合
 	const wchar_t *path = reinterpret_cast<const wchar_t *>(fontFile.value);
 	if (path && path[0] != L'\0')
 	{
@@ -303,6 +308,7 @@ std::wstring BuildFontKey(FontSource &source, std::wstring &familyOut)
 		return path;
 	}
 
+	// フォントファミリ名が指定されている場合
 	const wchar_t *family = GetFamilyInput();
 	if (family)
 	{
@@ -311,11 +317,13 @@ std::wstring BuildFontKey(FontSource &source, std::wstring &familyOut)
 		return std::wstring(L"family:") + family;
 	}
 
+	// フォントが指定できない場合、デフォルトフォントを使用する
 	source = FontSource::Default;
 	familyOut = kDefaultFontFamily;
 	return kDefaultFontFamily;
 }
 
+// 現在のフォントキャッシュキーを取得する
 std::wstring GetFontCacheKey()
 {
 	FontSource src;
@@ -323,6 +331,7 @@ std::wstring GetFontCacheKey()
 	return BuildFontKey(src, family);
 }
 
+// 軸キャッシュを無効化する
 void InvalidateAxisCache()
 {
 	g_axisCacheValid = false;
@@ -331,6 +340,7 @@ void InvalidateAxisCache()
 	g_cachedAxisValues.clear();
 }
 
+// フォントキャッシュを無効化する
 void InvalidateFontCache()
 {
 	g_cachedFontFace.Reset();
@@ -339,6 +349,7 @@ void InvalidateFontCache()
 	g_cachedFontKey.clear();
 }
 
+// 軸キャッシュキーを確認し、必要ならキャッシュを更新する
 void EnsureAxisCacheKey(const std::wstring &fontKey)
 {
 	if (g_cachedAxisFontKey != fontKey)
@@ -348,6 +359,7 @@ void EnsureAxisCacheKey(const std::wstring &fontKey)
 	}
 }
 
+// テキスト入力取得とデフォルト値設定
 const wchar_t *GetInputText()
 {
 	const wchar_t *text = reinterpret_cast<const wchar_t *>(textInput.value);
@@ -358,13 +370,16 @@ const wchar_t *GetInputText()
 	return text;
 }
 
+// フォントリソース構造体
+// フォントフェイスとフォントコレクションをまとめたもの
 struct FontResources
 {
-	ComPtr<IDWriteFontFace5> fontFace;
-	ComPtr<IDWriteFontCollection> fontCollection;
-	std::wstring familyName;
+	ComPtr<IDWriteFontFace5> fontFace; // フォントの対応機能を取得する
+	ComPtr<IDWriteFontCollection> fontCollection; // フォントファミリを取得する
+	std::wstring familyName; // フォントファミリ名
 };
 
+// システムフォントから指定されたフォントファミリ名のフォントを読み込む
 bool LoadSystemFontFamily(const std::wstring &familyName, FontResources &out)
 {
 	if (!g_dwriteFactory)
@@ -379,6 +394,7 @@ bool LoadSystemFontFamily(const std::wstring &familyName, FontResources &out)
 	UINT32 index = 0;
 	BOOL exists = FALSE;
 	collection->FindFamilyName(familyName.c_str(), &index, &exists);
+	// 指定されたフォントファミリ名が存在しない場合、デフォルトフォントを使用する
 	if (!exists)
 	{
 		collection->FindFamilyName(kDefaultFontFamily, &index, &exists);
@@ -396,35 +412,41 @@ bool LoadSystemFontFamily(const std::wstring &familyName, FontResources &out)
 	DWRITE_FONT_STYLE styleValue = italic.value ? DWRITE_FONT_STYLE_ITALIC : DWRITE_FONT_STYLE_NORMAL;
 
 	ComPtr<IDWriteFont> font;
+	// 指定されたフォントファミリ名とスタイルに一致する最初のフォントを取得する
 	if (FAILED(family->GetFirstMatchingFont(weightValue, DWRITE_FONT_STRETCH_NORMAL, styleValue, &font)))
 	{
 		return false;
 	}
 
 	ComPtr<IDWriteFontFace> baseFace;
+	// フォントフェイスを取得する
 	if (FAILED(font->CreateFontFace(&baseFace)))
 	{
 		return false;
 	}
 
 	ComPtr<IDWriteFontFace5> face5;
+	// IDWriteFontFace5へ変換
 	if (FAILED(baseFace.As(&face5)))
 	{
 		return false;
 	}
 
+	// FontResourcesに設定する
 	out.fontFace = face5;
 	out.fontCollection = collection;
 	out.familyName = exists ? familyName : kDefaultFontFamily;
 	return true;
 }
 
+// 指定されたパスからフォントファイルを読み込み、フォントリソースを取得する
 bool LoadFontFromFile(const wchar_t *path, FontResources &out)
 {
 	if (!g_dwriteFactory || !path || path[0] == L'\0')
 		return false;
 
 	ComPtr<IDWriteFontFile> fontFileRef;
+	// フォントファイルリファレンスを作成する
 	if (FAILED(g_dwriteFactory->CreateFontFileReference(path, nullptr, &fontFileRef)))
 	{
 		return false;
@@ -460,9 +482,11 @@ bool LoadFontFromFile(const wchar_t *path, FontResources &out)
 	{
 		return false;
 	}
+	// フォントファイルをフォントセットに追加する
 	builder1->AddFontFile(fontFileRef.Get());
 
 	ComPtr<IDWriteFontSet> fontSet;
+	// フォントセットを作成する
 	hr = builder1->CreateFontSet(&fontSet);
 	if (FAILED(hr))
 	{
@@ -472,6 +496,7 @@ bool LoadFontFromFile(const wchar_t *path, FontResources &out)
 	fontSet.As(&fontSet1);
 
 	ComPtr<IDWriteFontCollection1> collection;
+	// フォントセットからフォントコレクションを作成する
 	hr = g_dwriteFactory->CreateFontCollectionFromFontSet(fontSet.Get(), &collection);
 	if (FAILED(hr))
 	{
@@ -481,6 +506,7 @@ bool LoadFontFromFile(const wchar_t *path, FontResources &out)
 	std::wstring family;
 	ComPtr<IDWriteLocalizedStrings> names;
 	BOOL exists = FALSE;
+	// フォントファミリ名を取得する
 	if (SUCCEEDED(fontSet->GetPropertyValues(0, DWRITE_FONT_PROPERTY_ID_FAMILY_NAME, &exists, &names)) && exists)
 	{
 		UINT32 len = 0;
@@ -496,14 +522,17 @@ bool LoadFontFromFile(const wchar_t *path, FontResources &out)
 		family = kDefaultFontFamily;
 	}
 
+	// FontResourcesに設定する
 	out.fontFace = face5;
 	out.fontCollection = collection;
 	out.familyName = family;
 	return true;
 }
 
+// フォントリソースを解決する。キャッシュが有効ならキャッシュを利用する。
 bool ResolveFontResources(FontResources &out)
 {
+	// フォントキーを構築してキャッシュを確認する
 	FontSource src;
 	std::wstring familyName;
 	const std::wstring fontKey = BuildFontKey(src, familyName);
@@ -518,22 +547,25 @@ bool ResolveFontResources(FontResources &out)
 
 	FontResources temp;
 	bool loaded = false;
+	// キャッシュが無効な場合、フォントをファイルから読み込む
 	if (src == FontSource::File)
 	{
 		loaded = LoadFontFromFile(fontKey.c_str(), temp);
 	}
-	else
+	else // フォントファミリ名またはデフォルトフォントから読み込む
 	{
 		const std::wstring targetFamily = (src == FontSource::Family && !familyName.empty()) ? familyName : kDefaultFontFamily;
 		loaded = LoadSystemFontFamily(targetFamily, temp);
 	}
 
+	// フォントの読み込みに失敗した場合、キャッシュを無効化してfalseを返す
 	if (!loaded)
 	{
 		InvalidateFontCache();
 		return false;
 	}
 
+	// 初回フォントリソースをキャッシュに保存する
 	g_cachedFontFace = temp.fontFace;
 	g_cachedFontCollection = temp.fontCollection;
 	g_cachedFamilyName = temp.familyName;
@@ -542,6 +574,7 @@ bool ResolveFontResources(FontResources &out)
 	return true;
 }
 
+// ヘルパー関数: バリアブル軸設定
 void GetSupportedAxes(
 	IDWriteFontFace5 *fontFace,
 	std::unordered_set<DWRITE_FONT_AXIS_TAG> &supportedTags,
@@ -552,6 +585,7 @@ void GetSupportedAxes(
 	if (!fontFace)
 		return;
 
+	// サポートされている軸タグを取得する
 	UINT32 valueCount = fontFace->GetFontAxisValueCount();
 	if (valueCount > 0)
 	{
@@ -566,6 +600,7 @@ void GetSupportedAxes(
 	}
 
 	ComPtr<IDWriteFontResource> resource;
+	// 軸の範囲情報を取得する
 	if (SUCCEEDED(fontFace->GetFontResource(&resource)) && resource)
 	{
 		UINT32 rangeCount = resource->GetFontAxisCount();
@@ -581,12 +616,14 @@ void GetSupportedAxes(
 	}
 }
 
+// 軸値を範囲内にクランプする
 float ClampAxisValue(const DWRITE_FONT_AXIS_RANGE &range, double value)
 {
 	double clamped = std::min(std::max(value, static_cast<double>(range.minValue)), static_cast<double>(range.maxValue));
 	return static_cast<float>(clamped);
 }
 
+// 軸値リストを構築する
 void BuildAxisValues(
 	const std::unordered_set<DWRITE_FONT_AXIS_TAG> &supportedTags,
 	const std::unordered_map<DWRITE_FONT_AXIS_TAG, DWRITE_FONT_AXIS_RANGE> &ranges,
@@ -599,13 +636,13 @@ void BuildAxisValues(
 			continue;
 		if (supportedTags.find(axis.tag) == supportedTags.end())
 		{
-			wchar_t msg[256];
-			swprintf_s(msg, L"軸タグ %c%c%c%c はフォントでサポートされていません。",
-					   (axis.tag >> 24) & 0xFF,
-					   (axis.tag >> 16) & 0xFF,
-					   (axis.tag >> 8) & 0xFF,
-					   (axis.tag >> 0) & 0xFF);
-			logger->info(logger, msg);
+			// wchar_t msg[256];
+			// swprintf_s(msg, L"軸タグ %c%c%c%c はフォントでサポートされていません。",
+			// 		   (axis.tag >> 24) & 0xFF,
+			// 		   (axis.tag >> 16) & 0xFF,
+			// 		   (axis.tag >> 8) & 0xFF,
+			// 		   (axis.tag >> 0) & 0xFF);
+			// logger->info(logger, msg);
 			continue; // 非対応軸は無視
 		}
 
@@ -623,6 +660,7 @@ void BuildAxisValues(
 	}
 }
 
+// バリアブル軸値を収集する
 void CollectAxisValuesForLayout(IDWriteFontFace5 *fontFace, const std::wstring &fontKey, std::vector<DWRITE_FONT_AXIS_VALUE> &axisValues)
 {
 	if (!fontFace)
@@ -632,6 +670,7 @@ void CollectAxisValuesForLayout(IDWriteFontFace5 *fontFace, const std::wstring &
 		return;
 	}
 
+	// 軸更新モードを確認する
 	const bool realtime = axisUpdateMode.value == 1;
 	if (realtime)
 	{
@@ -666,11 +705,15 @@ void CollectAxisValuesForLayout(IDWriteFontFace5 *fontFace, const std::wstring &
 //---------------------------------------------------------------------
 void ApplyTextAlignment(IDWriteTextLayout *textLayout, int alignValue)
 {
+	wchar_t msg[256];
+	swprintf_s(msg, L"ApplyTextAlignment called: alignValue=%d", alignValue);
+	logger->info(logger, msg);
+
 	// 水平方向
 	DWRITE_TEXT_ALIGNMENT textAlignH;
 	// 垂直方向
 	DWRITE_PARAGRAPH_ALIGNMENT textAlignV;
-	switch (alignValue % 3)
+	switch (alignValue)
 	{
 	case 0:
 		textAlignH = DWRITE_TEXT_ALIGNMENT_LEADING;
@@ -711,6 +754,9 @@ void ApplyTextAlignment(IDWriteTextLayout *textLayout, int alignValue)
 	}
 	textLayout->SetTextAlignment(textAlignH);
 	textLayout->SetParagraphAlignment(textAlignV);
+
+	swprintf_s(msg, L"Applied alignment: H=%d V=%d", static_cast<int>(textAlignH), static_cast<int>(textAlignV));
+	logger->info(logger, msg);
 }
 
 //---------------------------------------------------------------------
@@ -817,7 +863,7 @@ bool CreateTextLayout(float layoutWidth, float layoutHeight, ComPtr<IDWriteTextL
 }
 
 //---------------------------------------------------------------------
-//	TextLayoutのアウトライン描画用レンダラー
+//	TextLayoutの縁取り描画用レンダラー
 //---------------------------------------------------------------------
 class OutlineTextRenderer : public IDWriteTextRenderer
 {
@@ -835,7 +881,7 @@ public:
 		m_strokeStyle = strokeStyle;
 	}
 
-	// IUnknown
+	// カスタムレンダラーの 定型句
 	IFACEMETHOD(QueryInterface)(REFIID riid, void **ppvObject) override
 	{
 		if (!ppvObject)
@@ -852,11 +898,13 @@ public:
 		return E_NOINTERFACE;
 	}
 
+	// カスタムレンダラーの 定型句
 	IFACEMETHOD_(ULONG, AddRef)() override
 	{
 		return static_cast<ULONG>(InterlockedIncrement(&m_refCount));
 	}
 
+	// カスタムレンダラーの 定型句
 	IFACEMETHOD_(ULONG, Release)() override
 	{
 		ULONG ref = static_cast<ULONG>(InterlockedDecrement(&m_refCount));
@@ -876,6 +924,7 @@ public:
 		return S_OK;
 	}
 
+	// カスタムレンダラーの 定型句
 	IFACEMETHOD(GetCurrentTransform)(void *, DWRITE_MATRIX *transform) override
 	{
 		if (!transform || !m_context)
@@ -884,6 +933,7 @@ public:
 		return S_OK;
 	}
 
+	// カスタムレンダラーの 定型句
 	IFACEMETHOD(GetPixelsPerDip)(void *, FLOAT *pixelsPerDip) override
 	{
 		if (!pixelsPerDip || !m_context)
@@ -934,6 +984,7 @@ public:
 		if (FAILED(hr))
 			return hr;
 
+			// 座標変換を適用して縁取りを描画
 		ComPtr<ID2D1TransformedGeometry> transformed;
 		hr = m_factory->CreateTransformedGeometry(
 			path.Get(),
@@ -946,6 +997,8 @@ public:
 		return S_OK;
 	}
 
+	// カスタムレンダラーの 定型句
+	// 未使用メソッドは空実装とする
 	IFACEMETHOD(DrawUnderline)(
 		void *,
 		FLOAT,
@@ -956,6 +1009,8 @@ public:
 		return S_OK;
 	}
 
+	// カスタムレンダラーの 定型句
+	// 未使用メソッドは空実装とする
 	IFACEMETHOD(DrawStrikethrough)(
 		void *,
 		FLOAT,
@@ -966,6 +1021,8 @@ public:
 		return S_OK;
 	}
 
+	// カスタムレンダラーの 定型句
+	// 未使用メソッドは空実装とする
 	IFACEMETHOD(DrawInlineObject)(
 		void *,
 		FLOAT,
@@ -978,6 +1035,7 @@ public:
 		return S_OK;
 	}
 
+	// カスタムレンダラーの 定型句
 private:
 	~OutlineTextRenderer() = default;
 
@@ -997,6 +1055,11 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 	if (!d2dContext || !textLayout)
 		return E_INVALIDARG;
 
+	wchar_t msg[256];
+	swprintf_s(msg, L"RenderText called: offsetX=%f offsetY=%f outline=%d shadow=%d", offsetX, offsetY, static_cast<int>(outlineEnabled.value), static_cast<int>(shadowEnabled.value));
+	logger->info(logger, msg);
+
+	// フォントのブラシ作成
 	ComPtr<ID2D1SolidColorBrush> textBrush;
 	auto col = fontColor.value;
 	HRESULT hr = d2dContext->CreateSolidColorBrush(
@@ -1007,6 +1070,7 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 		return hr;
 	}
 
+	// 縁取り用ブラシ作成
 	ComPtr<ID2D1SolidColorBrush> outlineBrush;
 	if (outlineEnabled.value && outlineWidth.value > 0.0f)
 	{
@@ -1020,6 +1084,7 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 		}
 	}
 
+	// 影用ブラシ作成
 	ComPtr<ID2D1SolidColorBrush> shadowBrush;
 	if (shadowEnabled.value)
 	{
@@ -1034,12 +1099,15 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 		shadowBrush->SetOpacity(shadowOpacity.value / 100.0f);
 	}
 
+	// 影描画用イメージ作成
 	ComPtr<ID2D1Image> shadowImage;
 	if (shadowEnabled.value && shadowBlur.value > 0.0 && shadowBrush)
 	{
+		// 描画ターゲット取得
 		ComPtr<ID2D1Image> originalTarget;
 		d2dContext->GetTarget(&originalTarget);
 
+		// 影描画用コマンドリスト作成
 		ComPtr<ID2D1CommandList> shadowCommandList;
 		if (SUCCEEDED(d2dContext->CreateCommandList(&shadowCommandList)))
 		{
@@ -1052,6 +1120,7 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 			shadowCommandList->Close();
 			d2dContext->SetTarget(originalTarget.Get());
 
+			// 影エフェクト適用
 			ComPtr<ID2D1Effect> effect;
 			HRESULT hr = d2dContext->CreateEffect(CLSID_D2D1Shadow, &effect);
 			if (SUCCEEDED(hr))
@@ -1065,6 +1134,7 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 															 shadowOpacity.value / 100.0f));
 				effect.As(&shadowImage);
 			}
+			// ぼかしエフェクト適用
 			else if (SUCCEEDED(d2dContext->CreateEffect(CLSID_D2D1GaussianBlur, &effect)))
 			{
 				effect->SetInput(0, shadowCommandList.Get());
@@ -1072,6 +1142,7 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 				effect->SetValue(D2D1_GAUSSIANBLUR_PROP_BORDER_MODE, D2D1_BORDER_MODE_SOFT);
 				effect.As(&shadowImage);
 			}
+			// ぼかしエフェクトが使用できない場合、元のコマンドリストを使用する
 			else
 			{
 				shadowImage = shadowCommandList;
@@ -1175,14 +1246,18 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 //---------------------------------------------------------------------
 bool func_proc_video(FILTER_PROC_VIDEO *video)
 {
+	// 要求サイズ取得
 	float reqW = static_cast<float>(imageWidth.value);
 	float reqH = static_cast<float>(imageHeight.value);
+	// 自動サイズ判定
 	bool autoW = reqW <= 0.0f;
 	bool autoH = reqH <= 0.0f;
 
+	// レイアウト作成用サイズ決定
 	float layoutW = autoW ? 8192.0f : reqW;
 	float layoutH = autoH ? 8192.0f : reqH;
 
+	// フォールバックサイズ設定関数
 	auto setFallbackSize = [&](float &w, float &h)
 	{
 		if (video && video->scene)
@@ -1221,46 +1296,73 @@ bool func_proc_video(FILTER_PROC_VIDEO *video)
 	float shadowTop = shadowEnabled.value ? std::max(0.0f, -static_cast<float>(shadowOffsetY.value)) : 0.0f;
 	float shadowBottom = shadowEnabled.value ? std::max(0.0f, static_cast<float>(shadowOffsetY.value)) : 0.0f;
 
+	// 各方向のパディング合計
 	float leftPad = outlinePad + shadowLeft + blurMargin;
 	float rightPad = outlinePad + shadowRight + blurMargin;
 	float topPad = outlinePad + shadowTop + blurMargin;
 	float bottomPad = outlinePad + shadowBottom + blurMargin;
 
+	// サイズクランプ関数
 	auto clampSize = [](float v)
 	{
 		return std::min(8192.0f, std::max(1.0f, v));
 	};
 
+	// コンテンツサイズ取得
 	float contentW = metrics.widthIncludingTrailingWhitespace;
 	float contentH = metrics.height;
 
+	// 最終サイズ算出
 	float finalW = autoW ? (contentW + leftPad + rightPad) : reqW;
 	float finalH = autoH ? (contentH + topPad + bottomPad) : reqH;
 	finalW = clampSize(finalW);
 	finalH = clampSize(finalH);
 
-	// 自動サイズ時のみアンカーに基づくオフセットを計算
-	float drawOffsetX = 0.0f;
-	float drawOffsetY = 0.0f;
-	if (autoW) {
-		int hor = static_cast<int>(textAlign.value) / 3; // 0:left,1:center,2:right
-		if (hor == 0) drawOffsetX = leftPad;
-		else if (hor == 1) drawOffsetX = (finalW - contentW) / 2.0f;
-		else drawOffsetX = finalW - rightPad - contentW; // flush to right within padding
-	}
-	if (autoH) {
-		int ver = static_cast<int>(textAlign.value) % 3; // 0:top,1:middle,2:bottom
-		if (ver == 0) drawOffsetY = topPad;
-		else if (ver == 1) drawOffsetY = (finalH - contentH) / 2.0f;
-		else drawOffsetY = finalH - bottomPad - contentH; // flush to bottom within padding
+	{
+		wchar_t msg[512];
+		swprintf_s(msg, L"Measured metrics: contentW=%f contentH=%f leftPad=%f rightPad=%f topPad=%f bottomPad=%f -> finalW=%f finalH=%f autoW=%d autoH=%d textAlign=%d", contentW, contentH, leftPad, rightPad, topPad, bottomPad, finalW, finalH, static_cast<int>(autoW), static_cast<int>(autoH), static_cast<int>(textAlign.value));
+		logger->info(logger, msg);
 	}
 
+	// レイアウト内に収めるための内部領域（パディングを除いた領域）を算出
+	float innerW = std::max(1.0f, finalW - leftPad - rightPad);
+	float innerH = std::max(1.0f, finalH - topPad - bottomPad);
+
+	// 自動レイアウト時は、ユーザーの要望どおりレイアウト全体（finalW/finalH）を
+	// TextLayout のサイズとして使い、描画オフセットは (0,0) にして
+	// TextLayout の横/縦揃えで位置決めする。
+	float drawOffsetX = 0.0f;
+	float drawOffsetY = 0.0f;
+
 	ComPtr<IDWriteTextLayout> textLayout;
-	layoutW = std::max(1.0f, contentW);
-	layoutH = std::max(1.0f, contentH);
+	if (autoW || autoH)
+	{
+		// 自動方向は final size を使用
+		layoutW = std::max(1.0f, finalW);
+		layoutH = std::max(1.0f, finalH);
+		// 描画は左上から開始（0,0）して TextLayout の揃えに任せる
+		drawOffsetX = 0.0f;
+		drawOffsetY = 0.0f;
+	}
+	else
+	{
+		// 固定サイズ: 内部領域で TextLayout を作り、描画オフセットはパディング開始位置
+		layoutW = std::max(1.0f, innerW);
+		layoutH = std::max(1.0f, innerH);
+		drawOffsetX = leftPad;
+		drawOffsetY = topPad;
+	}
+
+	// TextLayout作成
 	if (!CreateTextLayout(layoutW, layoutH, textLayout))
 	{
 		return false;
+	}
+
+	{
+		wchar_t msg2[256];
+		swprintf_s(msg2, L"Draw offsets: drawOffsetX=%f drawOffsetY=%f layoutW=%f layoutH=%f", drawOffsetX, drawOffsetY, layoutW, layoutH);
+		logger->info(logger, msg2);
 	}
 
 	// 画像サイズ設定
