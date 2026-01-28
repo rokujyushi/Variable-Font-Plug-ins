@@ -22,6 +22,7 @@ using Microsoft::WRL::ComPtr;
 
 #include "filter2.h"
 #include "logger2.h"
+#include "SharedParams.h"
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "d2d1.lib")
@@ -1359,10 +1360,31 @@ bool func_proc_video(FILTER_PROC_VIDEO *video)
 		return false;
 	}
 
+	// 共有キャッシュから中心座標/回転を取得して描画オフセットに反映（有効フラグを確認）
 	{
-		wchar_t msg2[256];
-		swprintf_s(msg2, L"Draw offsets: drawOffsetX=%f drawOffsetY=%f layoutW=%f layoutH=%f", drawOffsetX, drawOffsetY, layoutW, layoutH);
-		logger->info(logger, msg2);
+		bool cacheValid = g_sharedParams.valid.load(std::memory_order_acquire);
+		if (cacheValid)
+		{
+			float cachedCenterX = g_sharedParams.centerX.load(std::memory_order_relaxed);
+			float cachedCenterY = g_sharedParams.centerY.load(std::memory_order_relaxed);
+			float cachedCenterZ = g_sharedParams.centerZ.load(std::memory_order_relaxed);
+			float cachedRotX = g_sharedParams.rotX.load(std::memory_order_relaxed);
+			float cachedRotY = g_sharedParams.rotY.load(std::memory_order_relaxed);
+			float cachedRotZ = g_sharedParams.rotZ.load(std::memory_order_relaxed);
+
+			// 単純なオフセット適用（ユーザーパラメータはピクセル単位想定）
+			drawOffsetX += cachedCenterX;
+			drawOffsetY += cachedCenterY;
+
+			wchar_t msg2[512];
+			swprintf_s(msg2, L"Draw offsets: drawOffsetX=%f drawOffsetY=%f layoutW=%f layoutH=%f (cachedCenterX=%f cachedCenterY=%f cachedCenterZ=%f rotX=%f rotY=%f rotZ=%f)",
+				drawOffsetX, drawOffsetY, layoutW, layoutH, cachedCenterX, cachedCenterY, cachedCenterZ, cachedRotX, cachedRotY, cachedRotZ);
+			logger->info(logger, msg2);
+		}
+		else
+		{
+			logger->info(logger, L"Shared params not valid yet ? skipping cached center apply");
+		}
 	}
 
 	// 画像サイズ設定

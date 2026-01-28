@@ -93,6 +93,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="VariableFont.cpp" />
+    <ClCompile Include="SharedParams.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\aviutl2_sdk\filter2.h" />
