@@ -1,5 +1,13 @@
-//----------------------------------------------------------------------------------
-//	Variable Font Text Object Plugin for AviUtl ExEdit2
+ï»¿//----------------------------------------------------------------------------------
+// Variable Font Text Object Plugin for AviUtl ExEdit2
+//
+// ã“ã®ãƒ•ã‚¡ã‚¤ãƒ«ã¯ AviUtl / ExEdit2 å‘ã‘ã®ãƒ†ã‚­ã‚¹ãƒˆãƒ—ãƒ©ã‚°ã‚¤ãƒ³æœ¬ä½“ã§ã™ã€‚
+// ä¸»ãªæ©Ÿèƒ½:
+// - DirectWrite/Direct2D ã‚’ç”¨ã„ãŸãƒ†ã‚­ã‚¹ãƒˆãƒ¬ã‚¤ã‚¢ã‚¦ãƒˆã¨æç”»
+// - ãƒãƒªã‚¢ãƒ–ãƒ«ãƒ•ã‚©ãƒ³ãƒˆï¼ˆå¯å¤‰è»¸ï¼‰ã®ã‚µãƒãƒ¼ãƒˆ
+// - å½±ãƒ»ç¸å–ã‚Šãƒ»åˆ‡ã‚ŠæŠœããƒ»ç–‘ä¼¼ã‚¹ã‚¿ã‚¤ãƒ«ï¼ˆæ“¬ä¼¼ãƒœãƒ¼ãƒ«ãƒ‰/æ“¬ä¼¼ã‚¤ã‚¿ãƒªãƒƒã‚¯ï¼‰ã®å®Ÿè£…
+//
+// ã“ã“ã«è¿½åŠ ã™ã‚‹ã‚³ãƒ¡ãƒ³ãƒˆã¯èª­ã¿ã‚„ã™ã•å‘ä¸Šã®ãŸã‚ã®æ³¨é‡ˆã§ã‚ã‚Šã€å‹•ä½œã«ã¯å½±éŸ¿ã—ã¾ã›ã‚“ã€‚
 //----------------------------------------------------------------------------------
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -29,32 +37,40 @@ using Microsoft::WRL::ComPtr;
 #pragma comment(lib, "dxguid.lib")
 
 //---------------------------------------------------------------------
-//	ƒOƒ[ƒoƒ‹•Ï”
+//	ã‚°ãƒ­ãƒ¼ãƒãƒ«å¤‰æ•°
 //---------------------------------------------------------------------
-ComPtr<ID2D1Device6> g_d2dDevice;
-ComPtr<ID2D1Factory7> g_d2dFactory;
-ComPtr<IDWriteFactory7> g_dwriteFactory;
-ComPtr<IDWriteFontFace5> g_cachedFontFace;
-std::wstring g_cachedFontKey;
-ComPtr<IDWriteFontCollection> g_cachedFontCollection;
-std::wstring g_cachedFamilyName;
-std::unordered_set<DWRITE_FONT_AXIS_TAG> g_cachedAxisTags;
-std::unordered_map<DWRITE_FONT_AXIS_TAG, DWRITE_FONT_AXIS_RANGE> g_cachedAxisRanges;
-std::vector<DWRITE_FONT_AXIS_VALUE> g_cachedAxisValues;
-std::wstring g_cachedAxisFontKey;
-bool g_axisCacheValid = false;
+// Direct2D / DirectWrite ã®ã‚°ãƒ­ãƒ¼ãƒãƒ«ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆï¼ˆãƒ—ãƒ©ã‚°ã‚¤ãƒ³å…¨ä½“ã§å…±æœ‰ï¼‰
+ComPtr<ID2D1Device6> g_d2dDevice;                       // D2D ãƒ‡ãƒã‚¤ã‚¹
+ComPtr<ID2D1Factory7> g_d2dFactory;                     // D2D ãƒ•ã‚¡ã‚¯ãƒˆãƒª
+ComPtr<IDWriteFactory7> g_dwriteFactory;                // DirectWrite ãƒ•ã‚¡ã‚¯ãƒˆãƒª
+
+// ãƒ•ã‚©ãƒ³ãƒˆã‚­ãƒ£ãƒƒã‚·ãƒ¥å‘¨ã‚Šã®æƒ…å ±
+ComPtr<IDWriteFontFace5> g_cachedFontFace;              // ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã—ã¦ã„ã‚‹ãƒ•ã‚©ãƒ³ãƒˆãƒ•ã‚§ã‚¤ã‚¹
+std::wstring g_cachedFontKey;                           // ãƒ•ã‚©ãƒ³ãƒˆã‚­ãƒ£ãƒƒã‚·ãƒ¥ã®ã‚­ãƒ¼
+ComPtr<IDWriteFontCollection> g_cachedFontCollection;   // ãƒ•ã‚©ãƒ³ãƒˆã‚³ãƒ¬ã‚¯ã‚·ãƒ§ãƒ³
+std::wstring g_cachedFamilyName;                        // ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã•ã‚ŒãŸãƒ•ã‚¡ãƒŸãƒªå
+std::unordered_set<DWRITE_FONT_AXIS_TAG> g_cachedAxisTags; // ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã•ã‚Œã¦ã„ã‚‹è»¸ã‚¿ã‚°é›†åˆ
+std::unordered_map<DWRITE_FONT_AXIS_TAG, DWRITE_FONT_AXIS_RANGE> g_cachedAxisRanges; // è»¸ã®ãƒ¬ãƒ³ã‚¸æƒ…å ±
+std::vector<DWRITE_FONT_AXIS_VALUE> g_cachedAxisValues; // ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã•ã‚ŒãŸè»¸å€¤ãƒªã‚¹ãƒˆ
+std::wstring g_cachedAxisFontKey;                       // è»¸ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã®ã‚­ãƒ¼
+bool g_axisCacheValid = false;                          // è»¸ã‚­ãƒ£ãƒƒã‚·ãƒ¥ãŒæœ‰åŠ¹ã‹
+
+// ãƒ­ã‚®ãƒ³ã‚°ãƒãƒ³ãƒ‰ãƒ«ï¼ˆå¤–éƒ¨ã‹ã‚‰è¨­å®šã•ã‚Œã‚‹ï¼‰
 LOG_HANDLE *logger;
 
-// ‹[—ƒXƒ^ƒCƒ‹“K—pó‘ÔiCreateTextLayout ‚ÅXV‚µARenderText ‚ÅQÆj
-bool g_useFauxItalic = false;
-bool g_useFauxBoldFill = false;
+// æ“¬ä¼¼ã‚¹ã‚¿ã‚¤ãƒ«ã®çŠ¶æ…‹ãƒ•ãƒ©ã‚°
+// `CreateTextLayout` ã§çŠ¶æ…‹ã‚’æ›´æ–°ã—ã€`RenderText` ã§å‚ç…§ã—ã¦æç”»æ™‚ã«é©ç”¨ã—ã¾ã™ã€‚
+bool g_useFauxItalic = false;   // æ“¬ä¼¼ã‚¤ã‚¿ãƒªãƒƒã‚¯ã‚’é©ç”¨ã™ã‚‹ã‹
+bool g_useFauxBoldFill = false; // æ“¬ä¼¼ãƒœãƒ¼ãƒ«ãƒ‰ï¼ˆå¡—ã‚Šé‡ã­ï¼‰ã‚’é©ç”¨ã™ã‚‹ã‹
 
-// ‹[—ƒXƒ^ƒCƒ‹ŒÅ’è’l
-constexpr float kFauxItalicShear = -0.2f;
-constexpr float kFauxBoldOffset = 1.75f;
+// æ“¬ä¼¼ã‚¹ã‚¿ã‚¤ãƒ«ã®å®šæ•°ï¼ˆå›ºå®šå€¤ï¼‰
+// - ã‚¤ã‚¿ãƒªãƒƒã‚¯ã¯æ°´å¹³ã›ã‚“æ–­ï¼ˆshearï¼‰ã§è¿‘ä¼¼
+// - ãƒœãƒ¼ãƒ«ãƒ‰ã¯è¤‡æ•°å›ã®å¡—ã‚Šã¤ã¶ã—ã‚ªãƒ•ã‚»ãƒƒãƒˆã§è¿‘ä¼¼
+constexpr float kFauxItalicShear = -0.2f;   // å·¦æ–¹å‘ã«å‚¾ã‘ã‚‹å€¤ï¼ˆè² ã¯å·¦å‚¾æ–œï¼‰
+constexpr float kFauxBoldOffset = 1.75f;    // æ“¬ä¼¼ãƒœãƒ¼ãƒ«ãƒ‰æ™‚ã®ã‚ªãƒ•ã‚»ãƒƒãƒˆè·é›¢
 
 //---------------------------------------------------------------------
-//	‘O•ûéŒ¾
+//	å‰æ–¹å®£è¨€
 //---------------------------------------------------------------------
 bool func_proc_video(FILTER_PROC_VIDEO *video);
 void InvalidateAxisCache();
@@ -67,7 +83,7 @@ struct AxisControl
 };
 
 //---------------------------------------------------------------------
-//	ƒƒOo—Í‹@”\‰Šú‰»ŠÖ” (–¢’è‹`‚È‚çŒÄ‚Î‚ê‚Ü‚¹‚ñ)
+//	ãƒ­ã‚°å‡ºåŠ›æ©Ÿèƒ½åˆæœŸåŒ–é–¢æ•° (æœªå®šç¾©ãªã‚‰å‘¼ã°ã‚Œã¾ã›ã‚“)
 //---------------------------------------------------------------------
 EXTERN_C __declspec(dllexport) void InitializeLogger(LOG_HANDLE *handle)
 {
@@ -75,46 +91,46 @@ EXTERN_C __declspec(dllexport) void InitializeLogger(LOG_HANDLE *handle)
 }
 
 //---------------------------------------------------------------------
-//	ƒtƒBƒ‹ƒ^İ’è€–Ú’è‹`
+//	ãƒ•ã‚£ãƒ«ã‚¿è¨­å®šé …ç›®å®šç¾©
 //---------------------------------------------------------------------
-// ƒtƒHƒ“ƒgİ’èƒOƒ‹[ƒv
-auto group_font = FILTER_ITEM_GROUP(L"ƒtƒHƒ“ƒgİ’è", true);
-auto fontFile = FILTER_ITEM_FILE(L"ƒtƒHƒ“ƒgƒtƒ@ƒCƒ‹", L"", L"TrueType Font (*.ttf;*.otf)\0*.ttf;*.otf\0");
-auto fontFamilyInput = FILTER_ITEM_STRING(L"ƒtƒHƒ“ƒg", L"");
-auto fontSize = FILTER_ITEM_TRACK(L"ƒTƒCƒY", 40.0, 1.0, 1000.0, 0.1);
-auto fontColor = FILTER_ITEM_COLOR(L"•¶šF", 0xffffff);
+// ãƒ•ã‚©ãƒ³ãƒˆè¨­å®šã‚°ãƒ«ãƒ¼ãƒ—
+auto group_font = FILTER_ITEM_GROUP(L"ãƒ•ã‚©ãƒ³ãƒˆè¨­å®š", true);
+auto fontFile = FILTER_ITEM_FILE(L"ãƒ•ã‚©ãƒ³ãƒˆãƒ•ã‚¡ã‚¤ãƒ«", L"", L"TrueType Font (*.ttf;*.otf)\0*.ttf;*.otf\0");
+auto fontFamilyInput = FILTER_ITEM_STRING(L"ãƒ•ã‚©ãƒ³ãƒˆ", L"");
+auto fontSize = FILTER_ITEM_TRACK(L"ã‚µã‚¤ã‚º", 40.0, 1.0, 1000.0, 0.1);
+auto fontColor = FILTER_ITEM_COLOR(L"æ–‡å­—è‰²", 0xffffff);
 auto bold = FILTER_ITEM_CHECK(L"B", false);
 auto italic = FILTER_ITEM_CHECK(L"I", false);
-auto charSpacing = FILTER_ITEM_TRACK(L"šŠÔ", 0.0, -100.0, 100.0, 0.1);
+auto charSpacing = FILTER_ITEM_TRACK(L"å­—é–“", 0.0, -100.0, 100.0, 0.1);
 auto group_font_end = FILTER_ITEM_GROUP(L"");
 
-// ‰eİ’èƒOƒ‹[ƒv
-auto group_shadow = FILTER_ITEM_GROUP(L"‰eİ’è", false);
-auto shadowEnabled = FILTER_ITEM_CHECK(L"‰e‚ğ•\¦", false);
-auto shadowColor = FILTER_ITEM_COLOR(L"‰eF", 0xffffff);
-auto shadowOffsetX = FILTER_ITEM_TRACK(L"‰eX", 15.0, -100.0, 100.0, 0.1);
-auto shadowOffsetY = FILTER_ITEM_TRACK(L"‰eY", 10.0, -100.0, 100.0, 0.1);
-auto shadowOpacity = FILTER_ITEM_TRACK(L"‰e”Z“x", 100.0, 0.0, 100.0, 1.0);
-auto shadowBlur = FILTER_ITEM_TRACK(L"‰e‚Ú‚©‚µ", 0.0, 0.0, 20.0, 0.1);
+// å½±è¨­å®šã‚°ãƒ«ãƒ¼ãƒ—
+auto group_shadow = FILTER_ITEM_GROUP(L"å½±è¨­å®š", false);
+auto shadowEnabled = FILTER_ITEM_CHECK(L"å½±ã‚’è¡¨ç¤º", false);
+auto shadowColor = FILTER_ITEM_COLOR(L"å½±è‰²", 0xffffff);
+auto shadowOffsetX = FILTER_ITEM_TRACK(L"å½±X", 15.0, -100.0, 100.0, 0.1);
+auto shadowOffsetY = FILTER_ITEM_TRACK(L"å½±Y", 10.0, -100.0, 100.0, 0.1);
+auto shadowOpacity = FILTER_ITEM_TRACK(L"å½±æ¿ƒåº¦", 100.0, 0.0, 100.0, 1.0);
+auto shadowBlur = FILTER_ITEM_TRACK(L"å½±ã¼ã‹ã—", 0.0, 0.0, 20.0, 0.1);
 auto group_shadow_end = FILTER_ITEM_GROUP(L"");
 
-// ‰æ‚èİ’èƒOƒ‹[ƒv
-auto group_outline = FILTER_ITEM_GROUP(L"‰æ‚èİ’è", false);
-auto outlineEnabled = FILTER_ITEM_CHECK(L"‰æ‚è‚ğ•\¦", false);
-auto outlineColor = FILTER_ITEM_COLOR(L"‰æ‚èF", 0xffffff);
-auto outlineWidth = FILTER_ITEM_TRACK(L"‰æ‚è•", 5.0, 0.0, 100.0, 0.1);
+// ç¸å–ã‚Šè¨­å®šã‚°ãƒ«ãƒ¼ãƒ—
+auto group_outline = FILTER_ITEM_GROUP(L"ç¸å–ã‚Šè¨­å®š", false);
+auto outlineEnabled = FILTER_ITEM_CHECK(L"ç¸å–ã‚Šã‚’è¡¨ç¤º", false);
+auto outlineColor = FILTER_ITEM_COLOR(L"ç¸å–ã‚Šè‰²", 0xffffff);
+auto outlineWidth = FILTER_ITEM_TRACK(L"ç¸å–ã‚Šå¹…", 5.0, 0.0, 100.0, 0.1);
 FILTER_ITEM_SELECT::ITEM outlineStyleItems[] = {
-	{L"ŠÛ", 0},
-	{L"Šp", 1},
+	{L"ä¸¸", 0},
+	{L"è§’", 1},
 	{nullptr}};
-auto outlineStyle = FILTER_ITEM_SELECT(L"‰æ‚èƒXƒ^ƒCƒ‹", 0, outlineStyleItems);
-auto clipping = FILTER_ITEM_CHECK(L"Ø‚è”²‚«", false);
+auto outlineStyle = FILTER_ITEM_SELECT(L"ç¸å–ã‚Šã‚¹ã‚¿ã‚¤ãƒ«", 0, outlineStyleItems);
+auto clipping = FILTER_ITEM_CHECK(L"åˆ‡ã‚ŠæŠœã", false);
 auto group_outline_end = FILTER_ITEM_GROUP(L"");
 
-// ƒoƒŠƒAƒuƒ‹²ƒOƒ‹[ƒv
-// ƒoƒŠƒAƒuƒ‹ƒtƒHƒ“ƒg‚ÌŠeí²‚ğİ’è‚·‚éB
-// ²‚Ì©“®’Ç‰Á‚É‚Í‘Î‰‚µ‚Ä‚¢‚È‚¢‚½‚ßA‚æ‚­g‚í‚ê‚é²‚ğ‚ ‚ç‚©‚¶‚ß—pˆÓ‚µ‚Ä‚¢‚éB
-auto group_variable = FILTER_ITEM_GROUP(L"ƒoƒŠƒAƒuƒ‹²", false);
+// ãƒãƒªã‚¢ãƒ–ãƒ«è»¸ã‚°ãƒ«ãƒ¼ãƒ—
+// ãƒãƒªã‚¢ãƒ–ãƒ«ãƒ•ã‚©ãƒ³ãƒˆã®å„ç¨®è»¸ã‚’è¨­å®šã™ã‚‹ã€‚
+// è»¸ã®è‡ªå‹•è¿½åŠ ã«ã¯å¯¾å¿œã—ã¦ã„ãªã„ãŸã‚ã€ã‚ˆãä½¿ã‚ã‚Œã‚‹è»¸ã‚’ã‚ã‚‰ã‹ã˜ã‚ç”¨æ„ã—ã¦ã„ã‚‹ã€‚
+auto group_variable = FILTER_ITEM_GROUP(L"ãƒãƒªã‚¢ãƒ–ãƒ«è»¸", false);
 auto weight = FILTER_ITEM_TRACK(L"Weight", 400, 100, 900, 1);
 auto width_axis = FILTER_ITEM_TRACK(L"Width", 100, 50, 200, 1);
 auto slant = FILTER_ITEM_TRACK(L"Slant", 0, -15, 0, 0.1);
@@ -130,10 +146,10 @@ auto ytas_axis = FILTER_ITEM_TRACK(L"YTAS", 0.0, -1000.0, 1000.0, 1.0);
 auto ytde_axis = FILTER_ITEM_TRACK(L"YTDE", 0.0, -1000.0, 1000.0, 1.0);
 auto ytfi_axis = FILTER_ITEM_TRACK(L"YTFI", 0.0, -1000.0, 1000.0, 1.0);
 FILTER_ITEM_SELECT::ITEM axisUpdateModeItems[] = {
-	{L"‰‰ñƒLƒƒƒbƒVƒ…", 0},
-	{L"ƒŠƒAƒ‹ƒ^ƒCƒ€", 1},
+	{L"åˆå›ã‚­ãƒ£ãƒƒã‚·ãƒ¥", 0},
+	{L"ãƒªã‚¢ãƒ«ã‚¿ã‚¤ãƒ ", 1},
 	{nullptr}};
-auto axisUpdateMode = FILTER_ITEM_SELECT(L"²XVƒ‚[ƒh", 1, axisUpdateModeItems);
+auto axisUpdateMode = FILTER_ITEM_SELECT(L"è»¸æ›´æ–°ãƒ¢ãƒ¼ãƒ‰", 1, axisUpdateModeItems);
 auto group_variable_end = FILTER_ITEM_GROUP(L"");
 
 const AxisControl kAxisControls[] = {
@@ -153,33 +169,33 @@ const AxisControl kAxisControls[] = {
 	{DWRITE_MAKE_FONT_AXIS_TAG('Y', 'T', 'F', 'I'), &ytfi_axis},
 };
 
-// ƒŒƒCƒAƒEƒgƒOƒ‹[ƒv
-auto group_layout = FILTER_ITEM_GROUP(L"ƒŒƒCƒAƒEƒg");
-// 0 ‚ğw’è‚·‚é‚ÆƒeƒLƒXƒg“à—e‚©‚ç©“®Zo‚·‚é
-auto imageWidth = FILTER_ITEM_TRACK(L"‰¡•", 0, 0, 8192, 1);
-auto imageHeight = FILTER_ITEM_TRACK(L"c•", 0, 0, 8192, 1);
+// ãƒ¬ã‚¤ã‚¢ã‚¦ãƒˆã‚°ãƒ«ãƒ¼ãƒ—
+auto group_layout = FILTER_ITEM_GROUP(L"ãƒ¬ã‚¤ã‚¢ã‚¦ãƒˆ");
+// 0 ã‚’æŒ‡å®šã™ã‚‹ã¨ãƒ†ã‚­ã‚¹ãƒˆå†…å®¹ã‹ã‚‰è‡ªå‹•ç®—å‡ºã™ã‚‹
+auto imageWidth = FILTER_ITEM_TRACK(L"æ¨ªå¹…", 0, 0, 8192, 1);
+auto imageHeight = FILTER_ITEM_TRACK(L"ç¸¦å¹…", 0, 0, 8192, 1);
 FILTER_ITEM_SELECT::ITEM alignItems[] = {
-	{L"¶Šñ‚¹[ã]", 0},
-	{L"¶Šñ‚¹[’†]", 1},
-	{L"¶Šñ‚¹[‰º]", 2},
-	{L"’†‰›‘µ‚¦[ã]", 3},
-	{L"’†‰›‘µ‚¦[’†]", 4},
-	{L"’†‰›‘µ‚¦[‰º]", 5},
-	{L"‰EŠñ‚¹[ã]", 6},
-	{L"‰EŠñ‚¹[’†]", 7},
-	{L"‰EŠñ‚¹[‰º]", 8},
+	{L"å·¦å¯„ã›[ä¸Š]", 0},
+	{L"å·¦å¯„ã›[ä¸­]", 1},
+	{L"å·¦å¯„ã›[ä¸‹]", 2},
+	{L"ä¸­å¤®æƒãˆ[ä¸Š]", 3},
+	{L"ä¸­å¤®æƒãˆ[ä¸­]", 4},
+	{L"ä¸­å¤®æƒãˆ[ä¸‹]", 5},
+	{L"å³å¯„ã›[ä¸Š]", 6},
+	{L"å³å¯„ã›[ä¸­]", 7},
+	{L"å³å¯„ã›[ä¸‹]", 8},
 	{nullptr}};
-auto textAlign = FILTER_ITEM_SELECT(L"•¶š‘µ‚¦", 4, alignItems);
-auto lineSpacing = FILTER_ITEM_TRACK(L"sŠÔ", 0.0, -100.0, 100.0, 0.1);
+auto textAlign = FILTER_ITEM_SELECT(L"æ–‡å­—æƒãˆ", 4, alignItems);
+auto lineSpacing = FILTER_ITEM_TRACK(L"è¡Œé–“", 0.0, -100.0, 100.0, 0.1);
 auto group_layout_end = FILTER_ITEM_GROUP(L"");
 
-// ƒAƒjƒ[ƒVƒ‡ƒ“ƒOƒ‹[ƒv
-// auto group_animation = FILTER_ITEM_GROUP(L"ƒAƒjƒ[ƒVƒ‡ƒ“", false);
-// auto displaySpeed = FILTER_ITEM_TRACK(L"•\¦‘¬“x", 0.0, 0.0, 100.0, 0.1);
+// ã‚¢ãƒ‹ãƒ¡ãƒ¼ã‚·ãƒ§ãƒ³ã‚°ãƒ«ãƒ¼ãƒ—
+// auto group_animation = FILTER_ITEM_GROUP(L"ã‚¢ãƒ‹ãƒ¡ãƒ¼ã‚·ãƒ§ãƒ³", false);
+// auto displaySpeed = FILTER_ITEM_TRACK(L"è¡¨ç¤ºé€Ÿåº¦", 0.0, 0.0, 100.0, 0.1);
 // auto group_animation_end = FILTER_ITEM_GROUP(L"");
 
-// ƒeƒLƒXƒg“ü—Í
-auto textInput = FILTER_ITEM_TEXT(L"ƒeƒLƒXƒg", L"");
+// ãƒ†ã‚­ã‚¹ãƒˆå…¥åŠ›
+auto textInput = FILTER_ITEM_TEXT(L"ãƒ†ã‚­ã‚¹ãƒˆ", L"");
 
 void *items[] = {
 	&group_font, &fontFile, &fontFamilyInput, &fontSize, &fontColor, &bold, &italic, &charSpacing, &group_font_end,
@@ -200,24 +216,24 @@ void *items[] = {
 	nullptr};
 
 //---------------------------------------------------------------------
-//	ƒtƒBƒ‹ƒ^ƒvƒ‰ƒOƒCƒ“\‘¢‘Ì’è‹`
+//	ãƒ•ã‚£ãƒ«ã‚¿ãƒ—ãƒ©ã‚°ã‚¤ãƒ³æ§‹é€ ä½“å®šç¾©
 //---------------------------------------------------------------------
 FILTER_PLUGIN_TABLE filter_plugin_table = {
-	FILTER_PLUGIN_TABLE::FLAG_VIDEO | FILTER_PLUGIN_TABLE::FLAG_INPUT, // ƒtƒ‰ƒO
-	L"Variable Font Text",											   // ƒvƒ‰ƒOƒCƒ“‚Ì–¼‘O
-	L"•”L‘å•Ÿ",												   // ƒ‰ƒxƒ‹‚Ì‰Šú’l
-	L"Variable Font Text Object v1.0",								   // ƒvƒ‰ƒOƒCƒ“‚Ìî•ñ
-	items,															   // İ’è€–Ú‚Ì’è‹`
-	func_proc_video,												   // ‰æ‘œƒtƒBƒ‹ƒ^ˆ—ŠÖ”‚Ö‚Ìƒ|ƒCƒ“ƒ^
-	nullptr															   // ‰¹ºƒtƒBƒ‹ƒ^ˆ—ŠÖ”‚Ö‚Ìƒ|ƒCƒ“ƒ^ (g—p‚µ‚È‚¢)
+	FILTER_PLUGIN_TABLE::FLAG_VIDEO | FILTER_PLUGIN_TABLE::FLAG_INPUT, // ãƒ•ãƒ©ã‚°
+	L"Variable Font Text",											   // ãƒ—ãƒ©ã‚°ã‚¤ãƒ³ã®åå‰
+	L"ãƒ†ã‚­ã‚¹ãƒˆ(VF)",												   // ãƒ©ãƒ™ãƒ«ã®åˆæœŸå€¤
+	L"Variable Font Text Object v1.0",								   // ãƒ—ãƒ©ã‚°ã‚¤ãƒ³ã®æƒ…å ±
+	items,															   // è¨­å®šé …ç›®ã®å®šç¾©
+	func_proc_video,												   // ç”»åƒãƒ•ã‚£ãƒ«ã‚¿å‡¦ç†é–¢æ•°ã¸ã®ãƒã‚¤ãƒ³ã‚¿
+	nullptr															   // éŸ³å£°ãƒ•ã‚£ãƒ«ã‚¿å‡¦ç†é–¢æ•°ã¸ã®ãƒã‚¤ãƒ³ã‚¿ (ä½¿ç”¨ã—ãªã„)
 };
 
 //---------------------------------------------------------------------
-//	ƒvƒ‰ƒOƒCƒ“DLL‰Šú‰»ŠÖ”
+//	ãƒ—ãƒ©ã‚°ã‚¤ãƒ³DLLåˆæœŸåŒ–é–¢æ•°
 //---------------------------------------------------------------------
 EXTERN_C __declspec(dllexport) bool InitializePlugin(DWORD version)
 {
-	// Direct2D Factoryì¬
+	// Direct2D Factoryä½œæˆ
 	D2D1_FACTORY_OPTIONS options = {};
 #ifdef _DEBUG
 	options.debugLevel = D2D1_DEBUG_LEVEL_INFORMATION;
@@ -233,15 +249,15 @@ EXTERN_C __declspec(dllexport) bool InitializePlugin(DWORD version)
 		return false;
 	}
 
-	// DirectWrite Factoryì¬
+	// DirectWrite Factoryä½œæˆ
 	hr = DWriteCreateFactory(
 		DWRITE_FACTORY_TYPE_SHARED,
 		__uuidof(IDWriteFactory7),
 		reinterpret_cast<IUnknown **>(g_dwriteFactory.GetAddressOf()));
 	if (FAILED(hr))
 	{
-		logger->warn(logger, L"Windows 10 1809–¢–‚Ì‚½‚ßƒtƒHƒ“ƒg‚ÌƒoƒŠƒAƒuƒ‹²‹@”\‚ª—˜—p‚Å‚«‚Ü‚¹‚ñB");
-		// Windows 10 1809–¢–‚Ìê‡AIDWriteFactory5‚ÖƒtƒH[ƒ‹ƒoƒbƒN
+		logger->warn(logger, L"Windows 10 1809æœªæº€ã®ãŸã‚ãƒ•ã‚©ãƒ³ãƒˆã®ãƒãƒªã‚¢ãƒ–ãƒ«è»¸æ©Ÿèƒ½ãŒåˆ©ç”¨ã§ãã¾ã›ã‚“ã€‚");
+		// Windows 10 1809æœªæº€ã®å ´åˆã€IDWriteFactory5ã¸ãƒ•ã‚©ãƒ¼ãƒ«ãƒãƒƒã‚¯
 		ComPtr<IDWriteFactory> factory;
 		hr = DWriteCreateFactory(
 			DWRITE_FACTORY_TYPE_SHARED,
@@ -249,21 +265,21 @@ EXTERN_C __declspec(dllexport) bool InitializePlugin(DWORD version)
 			reinterpret_cast<IUnknown **>(factory.GetAddressOf()));
 		if (FAILED(hr))
 		{
-			logger->error(logger, L"•¶šƒŒƒ“ƒ_ƒŠƒ“ƒOƒIƒuƒWƒFƒNƒg‚Ìì¬‚É¸”s‚µ‚Ü‚µ‚½B");
+			logger->error(logger, L"æ–‡å­—ãƒ¬ãƒ³ãƒ€ãƒªãƒ³ã‚°ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã®ä½œæˆã«å¤±æ•—ã—ã¾ã—ãŸã€‚");
 			return false;
 		}
-		// Factory7‚ªg‚¦‚È‚¢ê‡‚ÍŠî–{‹@”\‚Ì‚İ
+		// Factory7ãŒä½¿ãˆãªã„å ´åˆã¯åŸºæœ¬æ©Ÿèƒ½ã®ã¿
 	}
 
 	return true;
 }
 
 //---------------------------------------------------------------------
-//	ƒvƒ‰ƒOƒCƒ“DLL‰ğ•úŠÖ”
+//	ãƒ—ãƒ©ã‚°ã‚¤ãƒ³DLLè§£æ”¾é–¢æ•°
 //---------------------------------------------------------------------
 EXTERN_C __declspec(dllexport) void UninitializePlugin()
 {
-	// ƒŠƒ\[ƒX‰ğ•ú
+	// ãƒªã‚½ãƒ¼ã‚¹è§£æ”¾
 	InvalidateFontCache();
 	g_cachedAxisFontKey.clear();
 	InvalidateAxisCache();
@@ -273,7 +289,7 @@ EXTERN_C __declspec(dllexport) void UninitializePlugin()
 }
 
 //---------------------------------------------------------------------
-//	ƒtƒBƒ‹ƒ^\‘¢‘Ì‚Ìƒ|ƒCƒ“ƒ^‚ğ“n‚·ŠÖ”
+//	ãƒ•ã‚£ãƒ«ã‚¿æ§‹é€ ä½“ã®ãƒã‚¤ãƒ³ã‚¿ã‚’æ¸¡ã™é–¢æ•°
 //---------------------------------------------------------------------
 EXTERN_C __declspec(dllexport) FILTER_PLUGIN_TABLE *GetFilterPluginTable(void)
 {
@@ -281,8 +297,8 @@ EXTERN_C __declspec(dllexport) FILTER_PLUGIN_TABLE *GetFilterPluginTable(void)
 }
 
 //---------------------------------------------------------------------
-//	ƒtƒBƒ‹ƒ^\‘¢‘Ì‚Ìƒ|ƒCƒ“ƒ^‚ğ“n‚·ŠÖ”
-//-ƒwƒ‹ƒp[ŠÖ”: ƒeƒLƒXƒgæ“¾
+//	ãƒ•ã‚£ãƒ«ã‚¿æ§‹é€ ä½“ã®ãƒã‚¤ãƒ³ã‚¿ã‚’æ¸¡ã™é–¢æ•°
+//-ãƒ˜ãƒ«ãƒ‘ãƒ¼é–¢æ•°: ãƒ†ã‚­ã‚¹ãƒˆå–å¾—
 //---------------------------------------------------------------------
 static const wchar_t *kDefaultFontFamily = L"Yu Gothic UI";
 
@@ -293,7 +309,7 @@ enum class FontSource
 	Default
 };
 
-// ƒtƒHƒ“ƒg€–Ú‚©‚çƒtƒHƒ“ƒgƒtƒ@ƒ~ƒŠ–¼‚ğæ“¾
+// ãƒ•ã‚©ãƒ³ãƒˆé …ç›®ã‹ã‚‰ãƒ•ã‚©ãƒ³ãƒˆãƒ•ã‚¡ãƒŸãƒªåã‚’å–å¾—
 const wchar_t *GetFamilyInput()
 {
 	const wchar_t *name = reinterpret_cast<const wchar_t *>(fontFamilyInput.value);
@@ -304,10 +320,10 @@ const wchar_t *GetFamilyInput()
 	return nullptr;
 }
 
-// ƒtƒHƒ“ƒgƒL[‚ğ\’z‚·‚é
+// ãƒ•ã‚©ãƒ³ãƒˆã‚­ãƒ¼ã‚’æ§‹ç¯‰ã™ã‚‹
 std::wstring BuildFontKey(FontSource &source, std::wstring &familyOut)
 {
-	// ƒtƒHƒ“ƒgƒtƒ@ƒCƒ‹‚ªw’è‚³‚ê‚Ä‚¢‚éê‡
+	// ãƒ•ã‚©ãƒ³ãƒˆãƒ•ã‚¡ã‚¤ãƒ«ãŒæŒ‡å®šã•ã‚Œã¦ã„ã‚‹å ´åˆ
 	const wchar_t *path = reinterpret_cast<const wchar_t *>(fontFile.value);
 	if (path && path[0] != L'\0')
 	{
@@ -316,7 +332,7 @@ std::wstring BuildFontKey(FontSource &source, std::wstring &familyOut)
 		return path;
 	}
 
-	// ƒtƒHƒ“ƒgƒtƒ@ƒ~ƒŠ–¼‚ªw’è‚³‚ê‚Ä‚¢‚éê‡
+	// ãƒ•ã‚©ãƒ³ãƒˆãƒ•ã‚¡ãƒŸãƒªåãŒæŒ‡å®šã•ã‚Œã¦ã„ã‚‹å ´åˆ
 	const wchar_t *family = GetFamilyInput();
 	if (family)
 	{
@@ -325,13 +341,13 @@ std::wstring BuildFontKey(FontSource &source, std::wstring &familyOut)
 		return std::wstring(L"family:") + family;
 	}
 
-	// ƒtƒHƒ“ƒg‚ªw’è‚Å‚«‚È‚¢ê‡AƒfƒtƒHƒ‹ƒgƒtƒHƒ“ƒg‚ğg—p‚·‚é
+	// ãƒ•ã‚©ãƒ³ãƒˆãŒæŒ‡å®šã§ããªã„å ´åˆã€ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆãƒ•ã‚©ãƒ³ãƒˆã‚’ä½¿ç”¨ã™ã‚‹
 	source = FontSource::Default;
 	familyOut = kDefaultFontFamily;
 	return kDefaultFontFamily;
 }
 
-// Œ»İ‚ÌƒtƒHƒ“ƒgƒLƒƒƒbƒVƒ…ƒL[‚ğæ“¾‚·‚é
+// ç¾åœ¨ã®ãƒ•ã‚©ãƒ³ãƒˆã‚­ãƒ£ãƒƒã‚·ãƒ¥ã‚­ãƒ¼ã‚’å–å¾—ã™ã‚‹
 std::wstring GetFontCacheKey()
 {
 	FontSource src;
@@ -339,7 +355,7 @@ std::wstring GetFontCacheKey()
 	return BuildFontKey(src, family);
 }
 
-// ²ƒLƒƒƒbƒVƒ…‚ğ–³Œø‰»‚·‚é
+// è»¸ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã‚’ç„¡åŠ¹åŒ–ã™ã‚‹
 void InvalidateAxisCache()
 {
 	g_axisCacheValid = false;
@@ -348,7 +364,7 @@ void InvalidateAxisCache()
 	g_cachedAxisValues.clear();
 }
 
-// ƒtƒHƒ“ƒgƒLƒƒƒbƒVƒ…‚ğ–³Œø‰»‚·‚é
+// ãƒ•ã‚©ãƒ³ãƒˆã‚­ãƒ£ãƒƒã‚·ãƒ¥ã‚’ç„¡åŠ¹åŒ–ã™ã‚‹
 void InvalidateFontCache()
 {
 	g_cachedFontFace.Reset();
@@ -357,7 +373,7 @@ void InvalidateFontCache()
 	g_cachedFontKey.clear();
 }
 
-// ²ƒLƒƒƒbƒVƒ…ƒL[‚ğŠm”F‚µA•K—v‚È‚çƒLƒƒƒbƒVƒ…‚ğXV‚·‚é
+// è»¸ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã‚­ãƒ¼ã‚’ç¢ºèªã—ã€å¿…è¦ãªã‚‰ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã‚’æ›´æ–°ã™ã‚‹
 void EnsureAxisCacheKey(const std::wstring &fontKey)
 {
 	if (g_cachedAxisFontKey != fontKey)
@@ -367,27 +383,27 @@ void EnsureAxisCacheKey(const std::wstring &fontKey)
 	}
 }
 
-// ƒeƒLƒXƒg“ü—Íæ“¾‚ÆƒfƒtƒHƒ‹ƒg’lİ’è
+// ãƒ†ã‚­ã‚¹ãƒˆå…¥åŠ›å–å¾—ã¨ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆå€¤è¨­å®š
 const wchar_t *GetInputText()
 {
 	const wchar_t *text = reinterpret_cast<const wchar_t *>(textInput.value);
 	if (!text || text[0] == L'\0')
 	{
-		return L"ƒTƒ“ƒvƒ‹ƒeƒLƒXƒg";
+		return L"ã‚µãƒ³ãƒ—ãƒ«ãƒ†ã‚­ã‚¹ãƒˆ";
 	}
 	return text;
 }
 
-// ƒtƒHƒ“ƒgƒŠƒ\[ƒX\‘¢‘Ì
-// ƒtƒHƒ“ƒgƒtƒFƒCƒX‚ÆƒtƒHƒ“ƒgƒRƒŒƒNƒVƒ‡ƒ“‚ğ‚Ü‚Æ‚ß‚½‚à‚Ì
+// ãƒ•ã‚©ãƒ³ãƒˆãƒªã‚½ãƒ¼ã‚¹æ§‹é€ ä½“
+// ãƒ•ã‚©ãƒ³ãƒˆãƒ•ã‚§ã‚¤ã‚¹ã¨ãƒ•ã‚©ãƒ³ãƒˆã‚³ãƒ¬ã‚¯ã‚·ãƒ§ãƒ³ã‚’ã¾ã¨ã‚ãŸã‚‚ã®
 struct FontResources
 {
-	ComPtr<IDWriteFontFace5> fontFace; // ƒtƒHƒ“ƒg‚Ì‘Î‰‹@”\‚ğæ“¾‚·‚é
-	ComPtr<IDWriteFontCollection> fontCollection; // ƒtƒHƒ“ƒgƒtƒ@ƒ~ƒŠ‚ğæ“¾‚·‚é
-	std::wstring familyName; // ƒtƒHƒ“ƒgƒtƒ@ƒ~ƒŠ–¼
+	ComPtr<IDWriteFontFace5> fontFace; // ãƒ•ã‚©ãƒ³ãƒˆã®å¯¾å¿œæ©Ÿèƒ½ã‚’å–å¾—ã™ã‚‹
+	ComPtr<IDWriteFontCollection> fontCollection; // ãƒ•ã‚©ãƒ³ãƒˆãƒ•ã‚¡ãƒŸãƒªã‚’å–å¾—ã™ã‚‹
+	std::wstring familyName; // ãƒ•ã‚©ãƒ³ãƒˆãƒ•ã‚¡ãƒŸãƒªå
 };
 
-// ƒVƒXƒeƒ€ƒtƒHƒ“ƒg‚©‚çw’è‚³‚ê‚½ƒtƒHƒ“ƒgƒtƒ@ƒ~ƒŠ–¼‚ÌƒtƒHƒ“ƒg‚ğ“Ç‚İ‚Ş
+// ã‚·ã‚¹ãƒ†ãƒ ãƒ•ã‚©ãƒ³ãƒˆã‹ã‚‰æŒ‡å®šã•ã‚ŒãŸãƒ•ã‚©ãƒ³ãƒˆãƒ•ã‚¡ãƒŸãƒªåã®ãƒ•ã‚©ãƒ³ãƒˆã‚’èª­ã¿è¾¼ã‚€
 bool LoadSystemFontFamily(const std::wstring &familyName, FontResources &out)
 {
 	if (!g_dwriteFactory)
@@ -402,7 +418,7 @@ bool LoadSystemFontFamily(const std::wstring &familyName, FontResources &out)
 	UINT32 index = 0;
 	BOOL exists = FALSE;
 	collection->FindFamilyName(familyName.c_str(), &index, &exists);
-	// w’è‚³‚ê‚½ƒtƒHƒ“ƒgƒtƒ@ƒ~ƒŠ–¼‚ª‘¶İ‚µ‚È‚¢ê‡AƒfƒtƒHƒ‹ƒgƒtƒHƒ“ƒg‚ğg—p‚·‚é
+	// æŒ‡å®šã•ã‚ŒãŸãƒ•ã‚©ãƒ³ãƒˆãƒ•ã‚¡ãƒŸãƒªåãŒå­˜åœ¨ã—ãªã„å ´åˆã€ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆãƒ•ã‚©ãƒ³ãƒˆã‚’ä½¿ç”¨ã™ã‚‹
 	if (!exists)
 	{
 		collection->FindFamilyName(kDefaultFontFamily, &index, &exists);
@@ -420,41 +436,41 @@ bool LoadSystemFontFamily(const std::wstring &familyName, FontResources &out)
 	DWRITE_FONT_STYLE styleValue = italic.value ? DWRITE_FONT_STYLE_ITALIC : DWRITE_FONT_STYLE_NORMAL;
 
 	ComPtr<IDWriteFont> font;
-	// w’è‚³‚ê‚½ƒtƒHƒ“ƒgƒtƒ@ƒ~ƒŠ–¼‚ÆƒXƒ^ƒCƒ‹‚Éˆê’v‚·‚éÅ‰‚ÌƒtƒHƒ“ƒg‚ğæ“¾‚·‚é
+	// æŒ‡å®šã•ã‚ŒãŸãƒ•ã‚©ãƒ³ãƒˆãƒ•ã‚¡ãƒŸãƒªåã¨ã‚¹ã‚¿ã‚¤ãƒ«ã«ä¸€è‡´ã™ã‚‹æœ€åˆã®ãƒ•ã‚©ãƒ³ãƒˆã‚’å–å¾—ã™ã‚‹
 	if (FAILED(family->GetFirstMatchingFont(weightValue, DWRITE_FONT_STRETCH_NORMAL, styleValue, &font)))
 	{
 		return false;
 	}
 
 	ComPtr<IDWriteFontFace> baseFace;
-	// ƒtƒHƒ“ƒgƒtƒFƒCƒX‚ğæ“¾‚·‚é
+	// ãƒ•ã‚©ãƒ³ãƒˆãƒ•ã‚§ã‚¤ã‚¹ã‚’å–å¾—ã™ã‚‹
 	if (FAILED(font->CreateFontFace(&baseFace)))
 	{
 		return false;
 	}
 
 	ComPtr<IDWriteFontFace5> face5;
-	// IDWriteFontFace5‚Ö•ÏŠ·
+	// IDWriteFontFace5ã¸å¤‰æ›
 	if (FAILED(baseFace.As(&face5)))
 	{
 		return false;
 	}
 
-	// FontResources‚Éİ’è‚·‚é
+	// FontResourcesã«è¨­å®šã™ã‚‹
 	out.fontFace = face5;
 	out.fontCollection = collection;
 	out.familyName = exists ? familyName : kDefaultFontFamily;
 	return true;
 }
 
-// w’è‚³‚ê‚½ƒpƒX‚©‚çƒtƒHƒ“ƒgƒtƒ@ƒCƒ‹‚ğ“Ç‚İ‚İAƒtƒHƒ“ƒgƒŠƒ\[ƒX‚ğæ“¾‚·‚é
+// æŒ‡å®šã•ã‚ŒãŸãƒ‘ã‚¹ã‹ã‚‰ãƒ•ã‚©ãƒ³ãƒˆãƒ•ã‚¡ã‚¤ãƒ«ã‚’èª­ã¿è¾¼ã¿ã€ãƒ•ã‚©ãƒ³ãƒˆãƒªã‚½ãƒ¼ã‚¹ã‚’å–å¾—ã™ã‚‹
 bool LoadFontFromFile(const wchar_t *path, FontResources &out)
 {
 	if (!g_dwriteFactory || !path || path[0] == L'\0')
 		return false;
 
 	ComPtr<IDWriteFontFile> fontFileRef;
-	// ƒtƒHƒ“ƒgƒtƒ@ƒCƒ‹ƒŠƒtƒ@ƒŒƒ“ƒX‚ğì¬‚·‚é
+	// ãƒ•ã‚©ãƒ³ãƒˆãƒ•ã‚¡ã‚¤ãƒ«ãƒªãƒ•ã‚¡ãƒ¬ãƒ³ã‚¹ã‚’ä½œæˆã™ã‚‹
 	if (FAILED(g_dwriteFactory->CreateFontFileReference(path, nullptr, &fontFileRef)))
 	{
 		return false;
@@ -490,11 +506,11 @@ bool LoadFontFromFile(const wchar_t *path, FontResources &out)
 	{
 		return false;
 	}
-	// ƒtƒHƒ“ƒgƒtƒ@ƒCƒ‹‚ğƒtƒHƒ“ƒgƒZƒbƒg‚É’Ç‰Á‚·‚é
+	// ãƒ•ã‚©ãƒ³ãƒˆãƒ•ã‚¡ã‚¤ãƒ«ã‚’ãƒ•ã‚©ãƒ³ãƒˆã‚»ãƒƒãƒˆã«è¿½åŠ ã™ã‚‹
 	builder1->AddFontFile(fontFileRef.Get());
 
 	ComPtr<IDWriteFontSet> fontSet;
-	// ƒtƒHƒ“ƒgƒZƒbƒg‚ğì¬‚·‚é
+	// ãƒ•ã‚©ãƒ³ãƒˆã‚»ãƒƒãƒˆã‚’ä½œæˆã™ã‚‹
 	hr = builder1->CreateFontSet(&fontSet);
 	if (FAILED(hr))
 	{
@@ -504,7 +520,7 @@ bool LoadFontFromFile(const wchar_t *path, FontResources &out)
 	fontSet.As(&fontSet1);
 
 	ComPtr<IDWriteFontCollection1> collection;
-	// ƒtƒHƒ“ƒgƒZƒbƒg‚©‚çƒtƒHƒ“ƒgƒRƒŒƒNƒVƒ‡ƒ“‚ğì¬‚·‚é
+	// ãƒ•ã‚©ãƒ³ãƒˆã‚»ãƒƒãƒˆã‹ã‚‰ãƒ•ã‚©ãƒ³ãƒˆã‚³ãƒ¬ã‚¯ã‚·ãƒ§ãƒ³ã‚’ä½œæˆã™ã‚‹
 	hr = g_dwriteFactory->CreateFontCollectionFromFontSet(fontSet.Get(), &collection);
 	if (FAILED(hr))
 	{
@@ -514,7 +530,7 @@ bool LoadFontFromFile(const wchar_t *path, FontResources &out)
 	std::wstring family;
 	ComPtr<IDWriteLocalizedStrings> names;
 	BOOL exists = FALSE;
-	// ƒtƒHƒ“ƒgƒtƒ@ƒ~ƒŠ–¼‚ğæ“¾‚·‚é
+	// ãƒ•ã‚©ãƒ³ãƒˆãƒ•ã‚¡ãƒŸãƒªåã‚’å–å¾—ã™ã‚‹
 	if (SUCCEEDED(fontSet->GetPropertyValues(0, DWRITE_FONT_PROPERTY_ID_FAMILY_NAME, &exists, &names)) && exists)
 	{
 		UINT32 len = 0;
@@ -530,17 +546,17 @@ bool LoadFontFromFile(const wchar_t *path, FontResources &out)
 		family = kDefaultFontFamily;
 	}
 
-	// FontResources‚Éİ’è‚·‚é
+	// FontResourcesã«è¨­å®šã™ã‚‹
 	out.fontFace = face5;
 	out.fontCollection = collection;
 	out.familyName = family;
 	return true;
 }
 
-// ƒtƒHƒ“ƒgƒŠƒ\[ƒX‚ğ‰ğŒˆ‚·‚éBƒLƒƒƒbƒVƒ…‚ª—LŒø‚È‚çƒLƒƒƒbƒVƒ…‚ğ—˜—p‚·‚éB
+// ãƒ•ã‚©ãƒ³ãƒˆãƒªã‚½ãƒ¼ã‚¹ã‚’è§£æ±ºã™ã‚‹ã€‚ã‚­ãƒ£ãƒƒã‚·ãƒ¥ãŒæœ‰åŠ¹ãªã‚‰ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã‚’åˆ©ç”¨ã™ã‚‹ã€‚
 bool ResolveFontResources(FontResources &out)
 {
-	// ƒtƒHƒ“ƒgƒL[‚ğ\’z‚µ‚ÄƒLƒƒƒbƒVƒ…‚ğŠm”F‚·‚é
+	// ãƒ•ã‚©ãƒ³ãƒˆã‚­ãƒ¼ã‚’æ§‹ç¯‰ã—ã¦ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã‚’ç¢ºèªã™ã‚‹
 	FontSource src;
 	std::wstring familyName;
 	const std::wstring fontKey = BuildFontKey(src, familyName);
@@ -555,25 +571,25 @@ bool ResolveFontResources(FontResources &out)
 
 	FontResources temp;
 	bool loaded = false;
-	// ƒLƒƒƒbƒVƒ…‚ª–³Œø‚Èê‡AƒtƒHƒ“ƒg‚ğƒtƒ@ƒCƒ‹‚©‚ç“Ç‚İ‚Ş
+	// ã‚­ãƒ£ãƒƒã‚·ãƒ¥ãŒç„¡åŠ¹ãªå ´åˆã€ãƒ•ã‚©ãƒ³ãƒˆã‚’ãƒ•ã‚¡ã‚¤ãƒ«ã‹ã‚‰èª­ã¿è¾¼ã‚€
 	if (src == FontSource::File)
 	{
 		loaded = LoadFontFromFile(fontKey.c_str(), temp);
 	}
-	else // ƒtƒHƒ“ƒgƒtƒ@ƒ~ƒŠ–¼‚Ü‚½‚ÍƒfƒtƒHƒ‹ƒgƒtƒHƒ“ƒg‚©‚ç“Ç‚İ‚Ş
+	else // ãƒ•ã‚©ãƒ³ãƒˆãƒ•ã‚¡ãƒŸãƒªåã¾ãŸã¯ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆãƒ•ã‚©ãƒ³ãƒˆã‹ã‚‰èª­ã¿è¾¼ã‚€
 	{
 		const std::wstring targetFamily = (src == FontSource::Family && !familyName.empty()) ? familyName : kDefaultFontFamily;
 		loaded = LoadSystemFontFamily(targetFamily, temp);
 	}
 
-	// ƒtƒHƒ“ƒg‚Ì“Ç‚İ‚İ‚É¸”s‚µ‚½ê‡AƒLƒƒƒbƒVƒ…‚ğ–³Œø‰»‚µ‚Äfalse‚ğ•Ô‚·
+	// ãƒ•ã‚©ãƒ³ãƒˆã®èª­ã¿è¾¼ã¿ã«å¤±æ•—ã—ãŸå ´åˆã€ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã‚’ç„¡åŠ¹åŒ–ã—ã¦falseã‚’è¿”ã™
 	if (!loaded)
 	{
 		InvalidateFontCache();
 		return false;
 	}
 
-	// ‰‰ñƒtƒHƒ“ƒgƒŠƒ\[ƒX‚ğƒLƒƒƒbƒVƒ…‚É•Û‘¶‚·‚é
+	// åˆå›ãƒ•ã‚©ãƒ³ãƒˆãƒªã‚½ãƒ¼ã‚¹ã‚’ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã«ä¿å­˜ã™ã‚‹
 	g_cachedFontFace = temp.fontFace;
 	g_cachedFontCollection = temp.fontCollection;
 	g_cachedFamilyName = temp.familyName;
@@ -582,7 +598,7 @@ bool ResolveFontResources(FontResources &out)
 	return true;
 }
 
-// ƒwƒ‹ƒp[ŠÖ”: ƒoƒŠƒAƒuƒ‹²İ’è
+// ãƒ˜ãƒ«ãƒ‘ãƒ¼é–¢æ•°: ãƒãƒªã‚¢ãƒ–ãƒ«è»¸è¨­å®š
 void GetSupportedAxes(
 	IDWriteFontFace5 *fontFace,
 	std::unordered_set<DWRITE_FONT_AXIS_TAG> &supportedTags,
@@ -593,7 +609,7 @@ void GetSupportedAxes(
 	if (!fontFace)
 		return;
 
-	// ƒTƒ|[ƒg‚³‚ê‚Ä‚¢‚é²ƒ^ƒO‚ğæ“¾‚·‚é
+	// ã‚µãƒãƒ¼ãƒˆã•ã‚Œã¦ã„ã‚‹è»¸ã‚¿ã‚°ã‚’å–å¾—ã™ã‚‹
 	UINT32 valueCount = fontFace->GetFontAxisValueCount();
 	if (valueCount > 0)
 	{
@@ -608,7 +624,7 @@ void GetSupportedAxes(
 	}
 
 	ComPtr<IDWriteFontResource> resource;
-	// ²‚Ì”ÍˆÍî•ñ‚ğæ“¾‚·‚é
+	// è»¸ã®ç¯„å›²æƒ…å ±ã‚’å–å¾—ã™ã‚‹
 	if (SUCCEEDED(fontFace->GetFontResource(&resource)) && resource)
 	{
 		UINT32 rangeCount = resource->GetFontAxisCount();
@@ -624,14 +640,14 @@ void GetSupportedAxes(
 	}
 }
 
-// ²’l‚ğ”ÍˆÍ“à‚ÉƒNƒ‰ƒ“ƒv‚·‚é
+// è»¸å€¤ã‚’ç¯„å›²å†…ã«ã‚¯ãƒ©ãƒ³ãƒ—ã™ã‚‹
 float ClampAxisValue(const DWRITE_FONT_AXIS_RANGE &range, double value)
 {
 	double clamped = std::min(std::max(value, static_cast<double>(range.minValue)), static_cast<double>(range.maxValue));
 	return static_cast<float>(clamped);
 }
 
-// ²’lƒŠƒXƒg‚ğ\’z‚·‚é
+// è»¸å€¤ãƒªã‚¹ãƒˆã‚’æ§‹ç¯‰ã™ã‚‹
 void BuildAxisValues(
 	const std::unordered_set<DWRITE_FONT_AXIS_TAG> &supportedTags,
 	const std::unordered_map<DWRITE_FONT_AXIS_TAG, DWRITE_FONT_AXIS_RANGE> &ranges,
@@ -645,13 +661,13 @@ void BuildAxisValues(
 		if (supportedTags.find(axis.tag) == supportedTags.end())
 		{
 			// wchar_t msg[256];
-			// swprintf_s(msg, L"²ƒ^ƒO %c%c%c%c ‚ÍƒtƒHƒ“ƒg‚ÅƒTƒ|[ƒg‚³‚ê‚Ä‚¢‚Ü‚¹‚ñB",
+			// swprintf_s(msg, L"è»¸ã‚¿ã‚° %c%c%c%c ã¯ãƒ•ã‚©ãƒ³ãƒˆã§ã‚µãƒãƒ¼ãƒˆã•ã‚Œã¦ã„ã¾ã›ã‚“ã€‚",
 			// 		   (axis.tag >> 24) & 0xFF,
 			// 		   (axis.tag >> 16) & 0xFF,
 			// 		   (axis.tag >> 8) & 0xFF,
 			// 		   (axis.tag >> 0) & 0xFF);
 			// logger->info(logger, msg);
-			continue; // ”ñ‘Î‰²‚Í–³‹
+			continue; // éå¯¾å¿œè»¸ã¯ç„¡è¦–
 		}
 
 		float value = static_cast<float>(axis.track->value);
@@ -668,7 +684,7 @@ void BuildAxisValues(
 	}
 }
 
-// ƒoƒŠƒAƒuƒ‹²’l‚ğûW‚·‚é
+// ãƒãƒªã‚¢ãƒ–ãƒ«è»¸å€¤ã‚’åé›†ã™ã‚‹
 void CollectAxisValuesForLayout(IDWriteFontFace5 *fontFace, const std::wstring &fontKey, std::vector<DWRITE_FONT_AXIS_VALUE> &axisValues)
 {
 	if (!fontFace)
@@ -678,7 +694,7 @@ void CollectAxisValuesForLayout(IDWriteFontFace5 *fontFace, const std::wstring &
 		return;
 	}
 
-	// ²XVƒ‚[ƒh‚ğŠm”F‚·‚é
+	// è»¸æ›´æ–°ãƒ¢ãƒ¼ãƒ‰ã‚’ç¢ºèªã™ã‚‹
 	const bool realtime = axisUpdateMode.value == 1;
 	if (realtime)
 	{
@@ -709,7 +725,7 @@ void CollectAxisValuesForLayout(IDWriteFontFace5 *fontFace, const std::wstring &
 }
 
 //---------------------------------------------------------------------
-//	ƒwƒ‹ƒp[ŠÖ”: •¶š‘µ‚¦İ’è
+//	ãƒ˜ãƒ«ãƒ‘ãƒ¼é–¢æ•°: æ–‡å­—æƒãˆè¨­å®š
 //---------------------------------------------------------------------
 void ApplyTextAlignment(IDWriteTextLayout *textLayout, int alignValue)
 {
@@ -717,48 +733,48 @@ void ApplyTextAlignment(IDWriteTextLayout *textLayout, int alignValue)
 	swprintf_s(msg, L"ApplyTextAlignment called: alignValue=%d", alignValue);
 	logger->info(logger, msg);
 
-	// …•½•ûŒü
+	// æ°´å¹³æ–¹å‘
 	DWRITE_TEXT_ALIGNMENT textAlignH;
-	// ‚’¼•ûŒü
+	// å‚ç›´æ–¹å‘
 	DWRITE_PARAGRAPH_ALIGNMENT textAlignV;
 	switch (alignValue)
 	{
 	case 0:
 		textAlignH = DWRITE_TEXT_ALIGNMENT_LEADING;
 		textAlignV = DWRITE_PARAGRAPH_ALIGNMENT_NEAR;
-		break; // ¶
+		break; // å·¦
 	case 1:
 		textAlignH = DWRITE_TEXT_ALIGNMENT_LEADING;
 		textAlignV = DWRITE_PARAGRAPH_ALIGNMENT_CENTER;
-		break; // ¶’†
+		break; // å·¦ä¸­
 	case 2:
 		textAlignH = DWRITE_TEXT_ALIGNMENT_LEADING;
 		textAlignV = DWRITE_PARAGRAPH_ALIGNMENT_FAR;
-		break; // ¶‰º
+		break; // å·¦ä¸‹
 	case 3:
 		textAlignH = DWRITE_TEXT_ALIGNMENT_CENTER;
 		textAlignV = DWRITE_PARAGRAPH_ALIGNMENT_NEAR;
-		break; // ’†‰›ã
+		break; // ä¸­å¤®ä¸Š
 	case 4:
 		textAlignH = DWRITE_TEXT_ALIGNMENT_CENTER;
 		textAlignV = DWRITE_PARAGRAPH_ALIGNMENT_CENTER;
-		break; // ’†‰›’†
+		break; // ä¸­å¤®ä¸­
 	case 5:
 		textAlignH = DWRITE_TEXT_ALIGNMENT_CENTER;
 		textAlignV = DWRITE_PARAGRAPH_ALIGNMENT_FAR;
-		break; // ’†‰›‰º
+		break; // ä¸­å¤®ä¸‹
 	case 6:
 		textAlignH = DWRITE_TEXT_ALIGNMENT_TRAILING;
 		textAlignV = DWRITE_PARAGRAPH_ALIGNMENT_NEAR;
-		break; // ‰Eã
+		break; // å³ä¸Š
 	case 7:
 		textAlignH = DWRITE_TEXT_ALIGNMENT_TRAILING;
 		textAlignV = DWRITE_PARAGRAPH_ALIGNMENT_CENTER;
-		break; // ‰E’†
+		break; // å³ä¸­
 	case 8:
 		textAlignH = DWRITE_TEXT_ALIGNMENT_TRAILING;
 		textAlignV = DWRITE_PARAGRAPH_ALIGNMENT_FAR;
-		break; // ‰E‰º
+		break; // å³ä¸‹
 	}
 	textLayout->SetTextAlignment(textAlignH);
 	textLayout->SetParagraphAlignment(textAlignV);
@@ -768,7 +784,7 @@ void ApplyTextAlignment(IDWriteTextLayout *textLayout, int alignValue)
 }
 
 //---------------------------------------------------------------------
-//	ƒwƒ‹ƒp[ŠÖ”: TextLayoutì¬
+//	ãƒ˜ãƒ«ãƒ‘ãƒ¼é–¢æ•°: TextLayoutä½œæˆ
 //---------------------------------------------------------------------
 bool CreateTextLayout(float layoutWidth, float layoutHeight, ComPtr<IDWriteTextLayout> &outLayout, bool disableWordWrap = false)
 {
@@ -786,15 +802,15 @@ bool CreateTextLayout(float layoutWidth, float layoutHeight, ComPtr<IDWriteTextL
 		return false;
 	}
 
-	// ƒ†[ƒU[w’è‚Íí‚É‹[—ƒXƒ^ƒCƒ‹‚ğ“K—p‚·‚é
+	// ãƒ¦ãƒ¼ã‚¶ãƒ¼æŒ‡å®šæ™‚ã¯å¸¸ã«æ“¬ä¼¼ã‚¹ã‚¿ã‚¤ãƒ«ã‚’é©ç”¨ã™ã‚‹
 	g_useFauxBoldFill = bold.value;
 	g_useFauxItalic = italic.value;
 
-	// ‘Î‰²‚ÌŒŸo
+	// å¯¾å¿œè»¸ã®æ¤œå‡º
 	std::vector<DWRITE_FONT_AXIS_VALUE> axisValues;
 	CollectAxisValuesForLayout(fontRes.fontFace.Get(), fontKey, axisValues);
 
-	// TextFormatì¬ (²‘Î‰‚ğ—Dæ)
+	// TextFormatä½œæˆ (è»¸å¯¾å¿œã‚’å„ªå…ˆ)
 	ComPtr<IDWriteTextFormat> textFormat;
 	ComPtr<IDWriteFactory7> factory7;
 	g_dwriteFactory.As(&factory7);
@@ -818,8 +834,8 @@ bool CreateTextLayout(float layoutWidth, float layoutHeight, ComPtr<IDWriteTextL
 
 	if (!textFormat)
 	{
-		logger->info(logger, L"ƒtƒHƒ“ƒg‚ÌƒoƒŠƒAƒuƒ‹²‚É‘Î‰‚µ‚Ä‚¢‚È‚¢‚½‚ßA]—ˆƒtƒH[ƒ}ƒbƒg‚ğg—p‚µ‚Ü‚·B");
-		// ƒtƒH[ƒ‹ƒoƒbƒN: ²‚È‚µ‚Ì]—ˆƒtƒH[ƒ}ƒbƒg
+		logger->info(logger, L"ãƒ•ã‚©ãƒ³ãƒˆã®ãƒãƒªã‚¢ãƒ–ãƒ«è»¸ã«å¯¾å¿œã—ã¦ã„ãªã„ãŸã‚ã€å¾“æ¥ãƒ•ã‚©ãƒ¼ãƒãƒƒãƒˆã‚’ä½¿ç”¨ã—ã¾ã™ã€‚");
+		// ãƒ•ã‚©ãƒ¼ãƒ«ãƒãƒƒã‚¯: è»¸ãªã—ã®å¾“æ¥ãƒ•ã‚©ãƒ¼ãƒãƒƒãƒˆ
 		auto hr = g_dwriteFactory->CreateTextFormat(
 			fontRes.familyName.c_str(),
 			fontRes.fontCollection.Get(),
@@ -843,12 +859,12 @@ bool CreateTextLayout(float layoutWidth, float layoutHeight, ComPtr<IDWriteTextL
 	if (FAILED(hr))
 		return false;
 
-	// ©“®ƒŒƒCƒAƒEƒg‚ÍÜ‚è•Ô‚µ‚ğ–³Œø‰»‚µ‚ÄA•‘ª’è‚ÌˆÓ}‚µ‚È‚¢‰üs‚ğ–h‚®
+	// è‡ªå‹•ãƒ¬ã‚¤ã‚¢ã‚¦ãƒˆæ™‚ã¯æŠ˜ã‚Šè¿”ã—ã‚’ç„¡åŠ¹åŒ–ã—ã¦ã€å¹…æ¸¬å®šæ™‚ã®æ„å›³ã—ãªã„æ”¹è¡Œã‚’é˜²ã
 	hr = outLayout->SetWordWrapping(disableWordWrap ? DWRITE_WORD_WRAPPING_NO_WRAP : DWRITE_WORD_WRAPPING_WRAP);
 	if (FAILED(hr))
 		return false;
 
-	// šŠÔİ’è
+	// å­—é–“è¨­å®š
 	if (charSpacing.value != 0.0)
 	{
 		DWRITE_TEXT_RANGE textRange = {0, textLength};
@@ -864,7 +880,7 @@ bool CreateTextLayout(float layoutWidth, float layoutHeight, ComPtr<IDWriteTextL
 		}
 	}
 
-	// sŠÔİ’è
+	// è¡Œé–“è¨­å®š
 	if (lineSpacing.value != 0.0)
 	{
 		outLayout->SetLineSpacing(
@@ -873,14 +889,14 @@ bool CreateTextLayout(float layoutWidth, float layoutHeight, ComPtr<IDWriteTextL
 			static_cast<float>(fontSize.value * 0.8f));
 	}
 
-	// •¶š‘µ‚¦İ’è
+	// æ–‡å­—æƒãˆè¨­å®š
 	ApplyTextAlignment(outLayout.Get(), textAlign.value);
 
 	return true;
 }
 
 //---------------------------------------------------------------------
-//	TextLayout‚Ì‰æ‚è•`‰æ—pƒŒƒ“ƒ_ƒ‰[
+//	TextLayoutã®ç¸å–ã‚Šæç”»ç”¨ãƒ¬ãƒ³ãƒ€ãƒ©ãƒ¼
 //---------------------------------------------------------------------
 class OutlineTextRenderer : public IDWriteTextRenderer
 {
@@ -898,7 +914,7 @@ public:
 		m_strokeStyle = strokeStyle;
 	}
 
-	// ƒJƒXƒ^ƒ€ƒŒƒ“ƒ_ƒ‰[‚Ì ’èŒ^‹å
+	// ã‚«ã‚¹ã‚¿ãƒ ãƒ¬ãƒ³ãƒ€ãƒ©ãƒ¼ã® å®šå‹å¥
 	IFACEMETHOD(QueryInterface)(REFIID riid, void **ppvObject) override
 	{
 		if (!ppvObject)
@@ -915,13 +931,13 @@ public:
 		return E_NOINTERFACE;
 	}
 
-	// ƒJƒXƒ^ƒ€ƒŒƒ“ƒ_ƒ‰[‚Ì ’èŒ^‹å
+	// ã‚«ã‚¹ã‚¿ãƒ ãƒ¬ãƒ³ãƒ€ãƒ©ãƒ¼ã® å®šå‹å¥
 	IFACEMETHOD_(ULONG, AddRef)() override
 	{
 		return static_cast<ULONG>(InterlockedIncrement(&m_refCount));
 	}
 
-	// ƒJƒXƒ^ƒ€ƒŒƒ“ƒ_ƒ‰[‚Ì ’èŒ^‹å
+	// ã‚«ã‚¹ã‚¿ãƒ ãƒ¬ãƒ³ãƒ€ãƒ©ãƒ¼ã® å®šå‹å¥
 	IFACEMETHOD_(ULONG, Release)() override
 	{
 		ULONG ref = static_cast<ULONG>(InterlockedDecrement(&m_refCount));
@@ -941,7 +957,7 @@ public:
 		return S_OK;
 	}
 
-	// ƒJƒXƒ^ƒ€ƒŒƒ“ƒ_ƒ‰[‚Ì ’èŒ^‹å
+	// ã‚«ã‚¹ã‚¿ãƒ ãƒ¬ãƒ³ãƒ€ãƒ©ãƒ¼ã® å®šå‹å¥
 	IFACEMETHOD(GetCurrentTransform)(void *, DWRITE_MATRIX *transform) override
 	{
 		if (!transform || !m_context)
@@ -950,7 +966,7 @@ public:
 		return S_OK;
 	}
 
-	// ƒJƒXƒ^ƒ€ƒŒƒ“ƒ_ƒ‰[‚Ì ’èŒ^‹å
+	// ã‚«ã‚¹ã‚¿ãƒ ãƒ¬ãƒ³ãƒ€ãƒ©ãƒ¼ã® å®šå‹å¥
 	IFACEMETHOD(GetPixelsPerDip)(void *, FLOAT *pixelsPerDip) override
 	{
 		if (!pixelsPerDip || !m_context)
@@ -1001,7 +1017,7 @@ public:
 		if (FAILED(hr))
 			return hr;
 
-			// À•W•ÏŠ·‚ğ“K—p‚µ‚Ä‰æ‚è‚ğ•`‰æ
+			// åº§æ¨™å¤‰æ›ã‚’é©ç”¨ã—ã¦ç¸å–ã‚Šã‚’æç”»
 		ComPtr<ID2D1TransformedGeometry> transformed;
 		hr = m_factory->CreateTransformedGeometry(
 			path.Get(),
@@ -1014,8 +1030,8 @@ public:
 		return S_OK;
 	}
 
-	// ƒJƒXƒ^ƒ€ƒŒƒ“ƒ_ƒ‰[‚Ì ’èŒ^‹å
-	// –¢g—pƒƒ\ƒbƒh‚Í‹óÀ‘•‚Æ‚·‚é
+	// ã‚«ã‚¹ã‚¿ãƒ ãƒ¬ãƒ³ãƒ€ãƒ©ãƒ¼ã® å®šå‹å¥
+	// æœªä½¿ç”¨ãƒ¡ã‚½ãƒƒãƒ‰ã¯ç©ºå®Ÿè£…ã¨ã™ã‚‹
 	IFACEMETHOD(DrawUnderline)(
 		void *,
 		FLOAT,
@@ -1026,8 +1042,8 @@ public:
 		return S_OK;
 	}
 
-	// ƒJƒXƒ^ƒ€ƒŒƒ“ƒ_ƒ‰[‚Ì ’èŒ^‹å
-	// –¢g—pƒƒ\ƒbƒh‚Í‹óÀ‘•‚Æ‚·‚é
+	// ã‚«ã‚¹ã‚¿ãƒ ãƒ¬ãƒ³ãƒ€ãƒ©ãƒ¼ã® å®šå‹å¥
+	// æœªä½¿ç”¨ãƒ¡ã‚½ãƒƒãƒ‰ã¯ç©ºå®Ÿè£…ã¨ã™ã‚‹
 	IFACEMETHOD(DrawStrikethrough)(
 		void *,
 		FLOAT,
@@ -1038,8 +1054,8 @@ public:
 		return S_OK;
 	}
 
-	// ƒJƒXƒ^ƒ€ƒŒƒ“ƒ_ƒ‰[‚Ì ’èŒ^‹å
-	// –¢g—pƒƒ\ƒbƒh‚Í‹óÀ‘•‚Æ‚·‚é
+	// ã‚«ã‚¹ã‚¿ãƒ ãƒ¬ãƒ³ãƒ€ãƒ©ãƒ¼ã® å®šå‹å¥
+	// æœªä½¿ç”¨ãƒ¡ã‚½ãƒƒãƒ‰ã¯ç©ºå®Ÿè£…ã¨ã™ã‚‹
 	IFACEMETHOD(DrawInlineObject)(
 		void *,
 		FLOAT,
@@ -1052,7 +1068,7 @@ public:
 		return S_OK;
 	}
 
-	// ƒJƒXƒ^ƒ€ƒŒƒ“ƒ_ƒ‰[‚Ì ’èŒ^‹å
+	// ã‚«ã‚¹ã‚¿ãƒ ãƒ¬ãƒ³ãƒ€ãƒ©ãƒ¼ã® å®šå‹å¥
 private:
 	~OutlineTextRenderer() = default;
 
@@ -1065,7 +1081,7 @@ private:
 };
 
 //---------------------------------------------------------------------
-//	ƒwƒ‹ƒp[ŠÖ”: ƒeƒLƒXƒgƒŒƒ“ƒ_ƒŠƒ“ƒO
+//	ãƒ˜ãƒ«ãƒ‘ãƒ¼é–¢æ•°: ãƒ†ã‚­ã‚¹ãƒˆãƒ¬ãƒ³ãƒ€ãƒªãƒ³ã‚°
 //---------------------------------------------------------------------
 HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayout, float offsetX /*=0*/, float offsetY /*=0*/)
 {
@@ -1078,6 +1094,31 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 
 	const float fauxItalicShear = g_useFauxItalic ? kFauxItalicShear : 0.0f;
 	const float fauxBoldOffset = g_useFauxBoldFill ? kFauxBoldOffset : 0.0f;
+	const D2D1_MATRIX_3X2_F fauxItalicMatrix = D2D1::Matrix3x2F(1.0f, 0.0f, fauxItalicShear, 1.0f, 0.0f, 0.0f);
+	static const D2D1_POINT_2F kFauxBoldSamples[] = {
+		{1.0f, 0.0f},
+		{-1.0f, 0.0f},
+		{0.0f, 1.0f},
+		{0.0f, -1.0f},
+		{0.70710677f, 0.70710677f},
+		{-0.70710677f, 0.70710677f},
+		{0.70710677f, -0.70710677f},
+		{-0.70710677f, -0.70710677f},
+	};
+
+	auto applyOptionalFauxItalicTransform = [&](D2D1_MATRIX_3X2_F &prevTransform)
+	{
+		d2dContext->GetTransform(&prevTransform);
+		if (g_useFauxItalic)
+		{
+			d2dContext->SetTransform(fauxItalicMatrix * prevTransform);
+		}
+	};
+
+	auto restoreTransform = [&](const D2D1_MATRIX_3X2_F &prevTransform)
+	{
+		d2dContext->SetTransform(prevTransform);
+	};
 
 	auto drawFillText = [&](ID2D1Brush *brush, float drawX, float drawY)
 	{
@@ -1086,17 +1127,7 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 
 		if (g_useFauxBoldFill)
 		{
-			const D2D1_POINT_2F offsets[] = {
-				{1.0f, 0.0f},
-				{-1.0f, 0.0f},
-				{0.0f, 1.0f},
-				{0.0f, -1.0f},
-				{0.70710677f, 0.70710677f},
-				{-0.70710677f, 0.70710677f},
-				{0.70710677f, -0.70710677f},
-				{-0.70710677f, -0.70710677f},
-			};
-			for (const auto &o : offsets)
+			for (const auto &o : kFauxBoldSamples)
 			{
 				d2dContext->DrawTextLayout(
 					D2D1::Point2F(drawX + o.x * fauxBoldOffset, drawY + o.y * fauxBoldOffset),
@@ -1108,7 +1139,7 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 		d2dContext->DrawTextLayout(D2D1::Point2F(drawX, drawY), textLayout, brush);
 	};
 
-	// ƒtƒHƒ“ƒg‚Ìƒuƒ‰ƒVì¬
+	// ãƒ•ã‚©ãƒ³ãƒˆã®ãƒ–ãƒ©ã‚·ä½œæˆ
 	ComPtr<ID2D1SolidColorBrush> textBrush;
 	auto col = fontColor.value;
 	HRESULT hr = d2dContext->CreateSolidColorBrush(
@@ -1119,7 +1150,7 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 		return hr;
 	}
 
-	// ‰æ‚è—pƒuƒ‰ƒVì¬
+	// ç¸å–ã‚Šç”¨ãƒ–ãƒ©ã‚·ä½œæˆ
 	ComPtr<ID2D1SolidColorBrush> outlineBrush;
 	if (outlineEnabled.value && outlineWidth.value > 0.0f)
 	{
@@ -1133,7 +1164,7 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 		}
 	}
 
-	// ‰e—pƒuƒ‰ƒVì¬
+	// å½±ç”¨ãƒ–ãƒ©ã‚·ä½œæˆ
 	ComPtr<ID2D1SolidColorBrush> shadowBrush;
 	if (shadowEnabled.value)
 	{
@@ -1148,37 +1179,32 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 		shadowBrush->SetOpacity(static_cast<float>(shadowOpacity.value / 100.0));
 	}
 
-	// ‰e•`‰æ—pƒCƒ[ƒWì¬
+	// å½±æç”»ç”¨ã‚¤ãƒ¡ãƒ¼ã‚¸ä½œæˆ
 	ComPtr<ID2D1Image> shadowImage;
 	if (shadowEnabled.value && shadowBlur.value > 0.0 && shadowBrush)
 	{
-		// •`‰æƒ^[ƒQƒbƒgæ“¾
+		// æç”»ã‚¿ãƒ¼ã‚²ãƒƒãƒˆå–å¾—
 		ComPtr<ID2D1Image> originalTarget;
 		d2dContext->GetTarget(&originalTarget);
 
-		// ‰e•`‰æ—pƒRƒ}ƒ“ƒhƒŠƒXƒgì¬
+		// å½±æç”»ç”¨ã‚³ãƒãƒ³ãƒ‰ãƒªã‚¹ãƒˆä½œæˆ
 		ComPtr<ID2D1CommandList> shadowCommandList;
 		if (SUCCEEDED(d2dContext->CreateCommandList(&shadowCommandList)))
 		{
 			D2D1_MATRIX_3X2_F prevTransform;
-			d2dContext->GetTransform(&prevTransform);
-			if (g_useFauxItalic)
-			{
-				const D2D1_MATRIX_3X2_F fauxItalic = D2D1::Matrix3x2F(1.0f, 0.0f, fauxItalicShear, 1.0f, 0.0f, 0.0f);
-				d2dContext->SetTransform(fauxItalic * prevTransform);
-			}
+			applyOptionalFauxItalicTransform(prevTransform);
 
 			d2dContext->SetTarget(shadowCommandList.Get());
 			d2dContext->BeginDraw();
 			d2dContext->Clear(D2D1::ColorF(0, 0, 0, 0));
-			// ƒLƒƒƒvƒ`ƒƒ‚ÍƒŒƒ“ƒ_ƒŠƒ“ƒOƒIƒtƒZƒbƒg‚ğŠÜ‚ß‚é
+			// ã‚­ãƒ£ãƒ—ãƒãƒ£æ™‚ã¯ãƒ¬ãƒ³ãƒ€ãƒªãƒ³ã‚°ã‚ªãƒ•ã‚»ãƒƒãƒˆã‚’å«ã‚ã‚‹
 			drawFillText(shadowBrush.Get(), offsetX, offsetY);
 			d2dContext->EndDraw();
 			shadowCommandList->Close();
 			d2dContext->SetTarget(originalTarget.Get());
-			d2dContext->SetTransform(prevTransform);
+			restoreTransform(prevTransform);
 
-			// ‰eƒGƒtƒFƒNƒg“K—p
+			// å½±ã‚¨ãƒ•ã‚§ã‚¯ãƒˆé©ç”¨
 			ComPtr<ID2D1Effect> effect;
 			HRESULT hr = d2dContext->CreateEffect(CLSID_D2D1Shadow, &effect);
 			if (SUCCEEDED(hr))
@@ -1192,7 +1218,7 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 										 static_cast<float>(shadowOpacity.value / 100.0)));
 				effect.As(&shadowImage);
 			}
-			// ‚Ú‚©‚µƒGƒtƒFƒNƒg“K—p
+			// ã¼ã‹ã—ã‚¨ãƒ•ã‚§ã‚¯ãƒˆé©ç”¨
 			else if (SUCCEEDED(d2dContext->CreateEffect(CLSID_D2D1GaussianBlur, &effect)))
 			{
 				effect->SetInput(0, shadowCommandList.Get());
@@ -1200,7 +1226,7 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 				effect->SetValue(D2D1_GAUSSIANBLUR_PROP_BORDER_MODE, D2D1_BORDER_MODE_SOFT);
 				effect.As(&shadowImage);
 			}
-			// ‚Ú‚©‚µƒGƒtƒFƒNƒg‚ªg—p‚Å‚«‚È‚¢ê‡AŒ³‚ÌƒRƒ}ƒ“ƒhƒŠƒXƒg‚ğg—p‚·‚é
+			// ã¼ã‹ã—ã‚¨ãƒ•ã‚§ã‚¯ãƒˆãŒä½¿ç”¨ã§ããªã„å ´åˆã€å…ƒã®ã‚³ãƒãƒ³ãƒ‰ãƒªã‚¹ãƒˆã‚’ä½¿ç”¨ã™ã‚‹
 			else
 			{
 				shadowImage = shadowCommandList;
@@ -1208,18 +1234,23 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 		}
 	}
 
+	// æç”»é–‹å§‹: æç”»ã‚³ãƒãƒ³ãƒ‰ã®ãƒãƒƒãƒã‚’é–‹å§‹ã—ã€ã‚¿ãƒ¼ã‚²ãƒƒãƒˆã‚’é€æ˜ã§ã‚¯ãƒªã‚¢ã—ã¾ã™ã€‚
+	// ã“ã‚Œã«ã‚ˆã‚Šå‰ãƒ•ãƒ¬ãƒ¼ãƒ ã®æ®‹åƒã‚’æ¶ˆã—ã€ãƒ¬ãƒ³ãƒ€ãƒªãƒ³ã‚°é ˜åŸŸã‚’åˆæœŸåŒ–ã—ã¾ã™ã€‚
 	d2dContext->BeginDraw();
 	d2dContext->Clear(D2D1::ColorF(0, 0, 0, 0));
 
+	// ãƒ¡ã‚¤ãƒ³æç”»ã§æ“¬ä¼¼ã‚¤ã‚¿ãƒªãƒƒã‚¯ï¼ˆã›ã‚“æ–­ï¼‰ã‚’é©ç”¨ã™ã‚‹å ´åˆã¯ã€ç¾åœ¨ã®å¤‰æ›ã‚’ä¿å­˜ã—
+	// ã›ã‚“æ–­è¡Œåˆ—ã‚’ä¹—ç®—ã—ã¦ã‹ã‚‰æç”»ã‚’è¡Œã„ã¾ã™ã€‚æç”»å¾Œã¯å¿…ãšå…ƒã®å¤‰æ›ã«æˆ»ã—ã¾ã™ã€‚
 	D2D1_MATRIX_3X2_F prevMainTransform;
-	d2dContext->GetTransform(&prevMainTransform);
-	if (g_useFauxItalic)
-	{
-		const D2D1_MATRIX_3X2_F fauxItalic = D2D1::Matrix3x2F(1.0f, 0.0f, fauxItalicShear, 1.0f, 0.0f, 0.0f);
-		d2dContext->SetTransform(fauxItalic * prevMainTransform);
-	}
+	applyOptionalFauxItalicTransform(prevMainTransform);
 
-	// ‰e•`‰æi‚Ú‚©‚µƒGƒtƒFƒNƒg—Dæ^¸”s‚ÍƒIƒtƒZƒbƒg•`‰æj
+	// å½±æç”»å‡¦ç†
+	// - ã‚·ãƒ£ãƒ‰ã‚¦ã¯ã¾ãšã‚³ãƒãƒ³ãƒ‰ãƒªã‚¹ãƒˆä¸Šã«ãƒ†ã‚­ã‚¹ãƒˆã‚’æç”»ã—ã€
+	//   ãã®ã‚¤ãƒ¡ãƒ¼ã‚¸ã«å¯¾ã—ã¦ã‚·ãƒ£ãƒ‰ã‚¦/ã‚¬ã‚¦ã‚¹ã¼ã‹ã—ã‚¨ãƒ•ã‚§ã‚¯ãƒˆã‚’é©ç”¨ã—ã¦ç”Ÿæˆã—ã¾ã™ã€‚
+	// - ã‚¨ãƒ•ã‚§ã‚¯ãƒˆãŒåˆ©ç”¨ã§ããªã„å ´åˆã¯ã€ã‚³ãƒãƒ³ãƒ‰ãƒªã‚¹ãƒˆè‡ªä½“ã‚’ãã®ã¾ã¾æç”»ã—ã¾ã™ã€‚
+	// - ã‚¨ãƒ•ã‚§ã‚¯ãƒˆãŒãªã„å ´åˆï¼ˆshadowImage ãŒãªã„ï¼‰ã«ã¯ã€å˜ç´”ã«ã‚ªãƒ•ã‚»ãƒƒãƒˆã—ã¦æç”»ã—ã¾ã™ã€‚
+	// - å½±ã«ã‚‚æ“¬ä¼¼ãƒœãƒ¼ãƒ«ãƒ‰ã‚„æ“¬ä¼¼ã‚¤ã‚¿ãƒªãƒƒã‚¯ã®åŠ¹æœã‚’åæ˜ ã•ã›ã‚‹ãŸã‚ã€
+	//   å‰æ®µã§é©ç”¨ã—ãŸ transform ã‚’æœ‰åŠ¹ã«ã—ãŸã¾ã¾æç”»ã‚’è¡Œã„ã¾ã™ã€‚
 	if (shadowEnabled.value && shadowBrush)
 	{
 		if (shadowImage)
@@ -1237,28 +1268,32 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 		}
 	}
 
-	// ‰æ‚èiŒ³‚ÌƒIƒtƒZƒbƒg‘½d•`‰æ‚É‚æ‚é‹ß—j
-	// ‰æ‚è‚ğ•`‰æ‚·‚é‚½‚ß‚Ì€”õ
-	// `strokeProps` ‚Åü‚Ì––’[ˆ—iŠÛ/Špj‚âŒ‹‡•û–@iŠÛ‚ß/ƒ~[ƒ^[j‚ğw’è‚·‚éB
-	// - startCap/endCap: ü‚Ì’[“_Œ`óiŠÛ‚ß‚é‚©ƒtƒ‰ƒbƒg‚É‚·‚é‚©j
-	// - lineJoin: ü‚ÌŒ‹‡•û–@iŠp‚ÌŒ©‚¦•ûj
-	// - miterLimit: ƒ~[ƒ^[Œ‹‡‚ÌÅ‘åL’·—¦i1.0f ‚Å‰sŠp‚Ì“Ë‚«o‚µ‚ğ—}‚¦‚éj
-	// ‚±‚ê‚ç‚ÌƒvƒƒpƒeƒB‚ÍA`ID2D1Factory::CreateStrokeStyle` ‚É“n‚µ‚Ä
-	// `ID2D1StrokeStyle` ‚ğì¬‚µA`DrawGeometry` ‚Ìü‚ÌŒ©‚½–Ú‚É”½‰f‚³‚ê‚éB
+	// ç¸å–ã‚Šï¼ˆã‚¢ã‚¦ãƒˆãƒ©ã‚¤ãƒ³ï¼‰æç”»ã®æº–å‚™ã¨æ³¨æ„ç‚¹
+	// - å¯èƒ½ãªé™ã‚Šæ­£ç¢ºãªã‚¢ã‚¦ãƒˆãƒ©ã‚¤ãƒ³ã‚’æç”»ã™ã‚‹ãŸã‚ã«ã€ã‚«ã‚¹ã‚¿ãƒ ãƒ¬ãƒ³ãƒ€ãƒ©ãƒ¼
+	//   `OutlineTextRenderer` ã‚’ä½¿ç”¨ã—ã¦ GlyphRun ã‹ã‚‰ã‚¸ã‚ªãƒ¡ãƒˆãƒªã‚’å–å¾—ã—æç”»ã—ã¾ã™ã€‚
+	// - `ID2D1StrokeStyle` ã®ãƒ—ãƒ­ãƒ‘ãƒ†ã‚£ã§ç·šã®ç«¯ç‚¹ã‚„çµåˆæ–¹æ³•ã‚’åˆ¶å¾¡ã—ã¾ã™ã€‚
+	//   - `startCap` / `endCap`: ç·šç«¯ã®å½¢çŠ¶ï¼ˆä¸¸ã‚ / å¹³å¦ï¼‰
+	//   - `lineJoin`: ç·šã®çµåˆæ–¹æ³•ï¼ˆä¸¸ã‚ / ãƒŸãƒ¼ã‚¿ãƒ¼ï¼‰
+	//   - `miterLimit`: ãƒŸãƒ¼ã‚¿ãƒ¼çµåˆæ™‚ã®çªãå‡ºã—æŠ‘åˆ¶
+	// - ã‚«ã‚¹ã‚¿ãƒ ãƒ¬ãƒ³ãƒ€ãƒ©ãƒ¼ã§æç”»ã§ããªã„å ´åˆï¼ˆä¾‹: å®Ÿè£…å¤±æ•—ã‚„ã‚µãƒãƒ¼ãƒˆå¤–ãƒ•ã‚©ãƒ³ãƒˆç­‰ï¼‰ã¯
+	//   ãƒ•ã‚©ãƒ¼ãƒ«ãƒãƒƒã‚¯ã¨ã—ã¦å¤šæ–¹å‘ã«ã‚ªãƒ•ã‚»ãƒƒãƒˆã—ãŸå¡—ã‚Šã¤ã¶ã—ã§æ“¬ä¼¼çš„ã«ç¸å–ã‚Šã‚’è¡¨ç¾ã—ã¾ã™ã€‚
+	// - ã‚¢ã‚¦ãƒˆãƒ©ã‚¤ãƒ³æç”»å¾Œã®å¡—ã‚Šï¼ˆæœ¬æ–‡ï¼‰ã®æœ‰ç„¡ã¯ `clipping` ãƒ•ãƒ©ã‚°ã«ä¾å­˜ã—ã¾ã™ã€‚
+	// - æ“¬ä¼¼ãƒœãƒ¼ãƒ«ãƒ‰/ã‚¤ã‚¿ãƒªãƒƒã‚¯ã‚’ç”¨ã„ã¦ã„ã‚‹å ´åˆã§ã‚‚ã‚¢ã‚¦ãƒˆãƒ©ã‚¤ãƒ³æç”»æ™‚ã«
+	//   transform ã‚’é©åˆ‡ã«ç¶­æŒã™ã‚‹ã“ã¨ã§è¦‹ãŸç›®ã‚’æ•´åˆã•ã›ã¾ã™ã€‚
 	bool outlined = false;
 	if (outlineEnabled.value && outlineWidth.value > 0.0f && outlineBrush)
 	{
 		D2D1_STROKE_STYLE_PROPERTIES strokeProps = {};
 		if (outlineStyle.value == 0)
 		{
-			// ŠÛ•t‚«iŠŠ‚ç‚©‚ÈŠpj
+			// ä¸¸ä»˜ãï¼ˆæ»‘ã‚‰ã‹ãªè§’ï¼‰
 			strokeProps.startCap = D2D1_CAP_STYLE_ROUND;
 			strokeProps.endCap = D2D1_CAP_STYLE_ROUND;
 			strokeProps.lineJoin = D2D1_LINE_JOIN_ROUND;
 		}
 		else
 		{
-			// Šp’£‚Á‚½Œ©‚½–Úiƒ~[ƒ^[Œ‹‡j
+			// è§’å¼µã£ãŸè¦‹ãŸç›®ï¼ˆãƒŸãƒ¼ã‚¿ãƒ¼çµåˆï¼‰
 			strokeProps.startCap = D2D1_CAP_STYLE_FLAT;
 			strokeProps.endCap = D2D1_CAP_STYLE_FLAT;
 			strokeProps.lineJoin = D2D1_LINE_JOIN_MITER;
@@ -1267,17 +1302,17 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 		strokeProps.dashStyle = D2D1_DASH_STYLE_SOLID;
 		strokeProps.dashOffset = 0.0f;
 
-		// StrokeStyle ‚ğ¶¬i¸”s‚µ‚Ä‚àƒtƒH[ƒ‹ƒoƒbƒN‚Å“®ì‚³‚¹‚éj
+		// StrokeStyle ã‚’ç”Ÿæˆï¼ˆå¤±æ•—ã—ã¦ã‚‚ãƒ•ã‚©ãƒ¼ãƒ«ãƒãƒƒã‚¯ã§å‹•ä½œã•ã›ã‚‹ï¼‰
 		ComPtr<ID2D1StrokeStyle> strokeStyle;
 		if (g_d2dFactory)
 		{
 			hr = g_d2dFactory->CreateStrokeStyle(&strokeProps, nullptr, 0, &strokeStyle);
 		}
 
-		// ƒeƒLƒXƒgƒAƒEƒgƒ‰ƒCƒ“‚ğ•`‰æ‚·‚éƒJƒXƒ^ƒ€ƒŒƒ“ƒ_ƒ‰[‚ğ¶¬‚·‚éB
-		// ƒJƒXƒ^ƒ€ƒŒƒ“ƒ_ƒ‰[‚Í“à•”‚Å GlyphRun ‚©‚çƒpƒX‚ğæ“¾‚µA
-		// `DrawGeometry` ‚ÅƒAƒEƒgƒ‰ƒCƒ“‚ğ•`‰æ‚·‚éB
-		// ƒƒ‚ƒŠ‚Í new ‚ÅŠm•Û‚µ‚Ä‚¢‚é‚½‚ßAg—pŒã‚Í•K‚¸ Release() ‚µ‚Ä‰ğ•ú‚·‚é‚±‚ÆB
+		// ãƒ†ã‚­ã‚¹ãƒˆã‚¢ã‚¦ãƒˆãƒ©ã‚¤ãƒ³ã‚’æç”»ã™ã‚‹ã‚«ã‚¹ã‚¿ãƒ ãƒ¬ãƒ³ãƒ€ãƒ©ãƒ¼ã‚’ç”Ÿæˆã™ã‚‹ã€‚
+		// ã‚«ã‚¹ã‚¿ãƒ ãƒ¬ãƒ³ãƒ€ãƒ©ãƒ¼ã¯å†…éƒ¨ã§ GlyphRun ã‹ã‚‰ãƒ‘ã‚¹ã‚’å–å¾—ã—ã€
+		// `DrawGeometry` ã§ã‚¢ã‚¦ãƒˆãƒ©ã‚¤ãƒ³ã‚’æç”»ã™ã‚‹ã€‚
+		// ãƒ¡ãƒ¢ãƒªã¯ new ã§ç¢ºä¿ã—ã¦ã„ã‚‹ãŸã‚ã€ä½¿ç”¨å¾Œã¯å¿…ãš Release() ã—ã¦è§£æ”¾ã™ã‚‹ã“ã¨ã€‚
 		auto renderer = new (std::nothrow) OutlineTextRenderer(
 			g_d2dFactory.Get(),
 			d2dContext,
@@ -1286,20 +1321,20 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 			static_cast<float>(outlineWidth.value));
 		if (renderer)
 		{
-			// Draw ‚ÍƒJƒXƒ^ƒ€ƒŒƒ“ƒ_ƒ‰[Œo—R‚ÅŠeƒOƒŠƒt‚ÌƒAƒEƒgƒ‰ƒCƒ“‚ğ•`‰æ‚·‚éB
-			// ¬Œ÷‚µ‚½ê‡‚Í outlined ‚ğ true ‚É‚µ‚ÄAŒã‘±‚ÌƒtƒH[ƒ‹ƒoƒbƒNˆ—‚ğs‚í‚È‚¢B
+			// Draw ã¯ã‚«ã‚¹ã‚¿ãƒ ãƒ¬ãƒ³ãƒ€ãƒ©ãƒ¼çµŒç”±ã§å„ã‚°ãƒªãƒ•ã®ã‚¢ã‚¦ãƒˆãƒ©ã‚¤ãƒ³ã‚’æç”»ã™ã‚‹ã€‚
+			// æˆåŠŸã—ãŸå ´åˆã¯ outlined ã‚’ true ã«ã—ã¦ã€å¾Œç¶šã®ãƒ•ã‚©ãƒ¼ãƒ«ãƒãƒƒã‚¯å‡¦ç†ã‚’è¡Œã‚ãªã„ã€‚
 			if (SUCCEEDED(textLayout->Draw(nullptr, renderer, offsetX, offsetY)))
 			{
 				outlined = true;
 			}
-			// ƒJƒXƒ^ƒ€ƒŒƒ“ƒ_ƒ‰[‚Ì‰ğ•úBReference Count ‚ğŠÇ—‚µ‚Ä‚¢‚é‚½‚ß•K{B
+			// ã‚«ã‚¹ã‚¿ãƒ ãƒ¬ãƒ³ãƒ€ãƒ©ãƒ¼ã®è§£æ”¾ã€‚Reference Count ã‚’ç®¡ç†ã—ã¦ã„ã‚‹ãŸã‚å¿…é ˆã€‚
 			renderer->Release();
 		}
 	}
 
-	// // ‰æ‚è•`‰æ‚ª¸”s‚µ‚½ê‡‚ÌƒtƒH[ƒ‹ƒoƒbƒN:
-	// // 8•ûŒü(45“x‚İ)‚É•`‰æ‚ğ‚¸‚ç‚µ‚Ä‹^—“I‚È‰‚ğì‚éB
-	// // –{—ˆ‚ÌƒAƒEƒgƒ‰ƒCƒ“‚æ‚è•i¿‚Í—‚¿‚é‚ªAÅ’áŒÀ‚Ì‹”F«‚ğŠm•Û‚·‚éB
+	// // ç¸å–ã‚Šæç”»ãŒå¤±æ•—ã—ãŸå ´åˆã®ãƒ•ã‚©ãƒ¼ãƒ«ãƒãƒƒã‚¯:
+	// // 8æ–¹å‘(45åº¦åˆ»ã¿)ã«æç”»ã‚’ãšã‚‰ã—ã¦ç–‘ä¼¼çš„ãªç¸ã‚’ä½œã‚‹ã€‚
+	// // æœ¬æ¥ã®ã‚¢ã‚¦ãƒˆãƒ©ã‚¤ãƒ³ã‚ˆã‚Šå“è³ªã¯è½ã¡ã‚‹ãŒã€æœ€ä½é™ã®è¦–èªæ€§ã‚’ç¢ºä¿ã™ã‚‹ã€‚
 	// if (!outlined && outlineEnabled.value && outlineWidth.value > 0.0f)
 	// {
 	// 	float offset = static_cast<float>(outlineWidth.value);
@@ -1314,44 +1349,44 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 	// 			textLayout,
 	// 			outlineBrush ? outlineBrush.Get() : textBrush.Get());
 	// 	}
-	// 	// ƒtƒH[ƒ‹ƒoƒbƒN‰æ‚èŒã‚É“h‚è‚Â‚Ô‚µ‚ğs‚¤‚±‚Æ‚ÅA
-	// 	// •¶š–{‘Ì‚ğ‚­‚Á‚«‚è•\¦‚µ‚Â‚Â‰‚¾‚¯‚ğc‚·B
-	// 	// –³Œø‚Í‰‚Ì‚İ‚Ì•`‰æ‚Æ‚È‚éB
+	// 	// ãƒ•ã‚©ãƒ¼ãƒ«ãƒãƒƒã‚¯ç¸å–ã‚Šå¾Œã«å¡—ã‚Šã¤ã¶ã—ã‚’è¡Œã†ã“ã¨ã§ã€
+	// 	// æ–‡å­—æœ¬ä½“ã‚’ãã£ãã‚Šè¡¨ç¤ºã—ã¤ã¤ç¸ã ã‘ã‚’æ®‹ã™ã€‚
+	// 	// ç„¡åŠ¹æ™‚ã¯ç¸ã®ã¿ã®æç”»ã¨ãªã‚‹ã€‚
 	// 	if (clipping.value)
 	// 	{
 	// 		d2dContext->DrawTextLayout(D2D1::Point2F(offsetX, offsetY), textLayout, textBrush.Get());
 	// 	}
 	// }
-	// ƒAƒEƒgƒ‰ƒCƒ“¬Œ÷‚Å‚à `clipping` ‚ª–³Œø‚È‚ç–{‘Ì‚Í•`‰æ‚µ‚È‚¢B
-	// ‚±‚ê‚Åu‰æ‚è‚Ì‚İi“à‘¤‚Í“§–¾jv‚Ì•\Œ»‚É‚È‚éB
+	// ã‚¢ã‚¦ãƒˆãƒ©ã‚¤ãƒ³æˆåŠŸæ™‚ã§ã‚‚ `clipping` ãŒç„¡åŠ¹ãªã‚‰æœ¬ä½“ã¯æç”»ã—ãªã„ã€‚
+	// ã“ã‚Œã§ã€Œç¸å–ã‚Šã®ã¿ï¼ˆå†…å´ã¯é€æ˜ï¼‰ã€ã®è¡¨ç¾ã«ãªã‚‹ã€‚
 	else if (!outlineEnabled.value || outlineWidth.value <= 0.0f || clipping.value)
 	{
 		drawFillText(textBrush.Get(), offsetX, offsetY);
 	}
 
-	d2dContext->SetTransform(prevMainTransform);
+	restoreTransform(prevMainTransform);
 
 	return d2dContext->EndDraw();
 }
 
 //---------------------------------------------------------------------
-//	‰æ‘œƒtƒBƒ‹ƒ^ˆ—
+//	ç”»åƒãƒ•ã‚£ãƒ«ã‚¿å‡¦ç†
 //---------------------------------------------------------------------
 bool func_proc_video(FILTER_PROC_VIDEO *video)
 {
-	// —v‹ƒTƒCƒYæ“¾
+	// è¦æ±‚ã‚µã‚¤ã‚ºå–å¾—
 	float reqW = static_cast<float>(imageWidth.value);
 	float reqH = static_cast<float>(imageHeight.value);
-	// ©“®ƒTƒCƒY”»’è
+	// è‡ªå‹•ã‚µã‚¤ã‚ºåˆ¤å®š
 	bool autoW = reqW <= 0.0f;
 	bool autoH = reqH <= 0.0f;
 	const bool disableWordWrap = autoW || autoH;
 
-	// ƒŒƒCƒAƒEƒgì¬—pƒTƒCƒYŒˆ’è
+	// ãƒ¬ã‚¤ã‚¢ã‚¦ãƒˆä½œæˆç”¨ã‚µã‚¤ã‚ºæ±ºå®š
 	float layoutW = autoW ? 8192.0f : reqW;
 	float layoutH = autoH ? 8192.0f : reqH;
 
-	// ƒtƒH[ƒ‹ƒoƒbƒNƒTƒCƒYİ’èŠÖ”
+	// ãƒ•ã‚©ãƒ¼ãƒ«ãƒãƒƒã‚¯ã‚µã‚¤ã‚ºè¨­å®šé–¢æ•°
 	auto setFallbackSize = [&](float &w, float &h)
 	{
 		if (video && video->scene)
@@ -1367,7 +1402,7 @@ bool func_proc_video(FILTER_PROC_VIDEO *video)
 	};
 
 	ComPtr<IDWriteTextLayout> layoutForMeasure;
-	// ©“®ƒTƒCƒY—p‚ÉƒƒgƒŠƒNƒXæ“¾i0w’è‚Í‘å‚«‚ß‚ÌƒŒƒCƒAƒEƒg‚Å‘ª’èj
+	// è‡ªå‹•ã‚µã‚¤ã‚ºç”¨ã«ãƒ¡ãƒˆãƒªã‚¯ã‚¹å–å¾—ï¼ˆ0æŒ‡å®šæ™‚ã¯å¤§ãã‚ã®ãƒ¬ã‚¤ã‚¢ã‚¦ãƒˆã§æ¸¬å®šï¼‰
 	bool measured = CreateTextLayout(layoutW, layoutH, layoutForMeasure, disableWordWrap);
 	DWRITE_TEXT_METRICS metrics = {};
 	if (!measured || FAILED(layoutForMeasure->GetMetrics(&metrics)))
@@ -1381,11 +1416,11 @@ bool func_proc_video(FILTER_PROC_VIDEO *video)
 		}
 	}
 
-	// ƒRƒ“ƒeƒ“ƒcƒTƒCƒYæ“¾
+	// ã‚³ãƒ³ãƒ†ãƒ³ãƒ„ã‚µã‚¤ã‚ºå–å¾—
 	float contentW = metrics.widthIncludingTrailingWhitespace;
 	float contentH = metrics.height;
 
-	// ƒpƒfƒBƒ“ƒOZoi‰æ‚è{‰eƒIƒtƒZƒbƒg{‚Ú‚©‚µ3ƒĞ‘Š“–{‹[—ƒXƒ^ƒCƒ‹•ªj
+	// ãƒ‘ãƒ‡ã‚£ãƒ³ã‚°ç®—å‡ºï¼ˆç¸å–ã‚Šï¼‹å½±ã‚ªãƒ•ã‚»ãƒƒãƒˆï¼‹ã¼ã‹ã—3Ïƒç›¸å½“ï¼‹æ“¬ä¼¼ã‚¹ã‚¿ã‚¤ãƒ«åˆ†ï¼‰
 	float outlinePad = (outlineEnabled.value && outlineWidth.value > 0.0) ? static_cast<float>(outlineWidth.value) : 0.0f;
 	float blurStdDev = (shadowEnabled.value && shadowBlur.value > 0.0) ? static_cast<float>(shadowBlur.value) : 0.0f;
 	float blurMargin = blurStdDev * 3.0f;
@@ -1396,19 +1431,19 @@ bool func_proc_video(FILTER_PROC_VIDEO *video)
 	float fauxBoldPad = g_useFauxBoldFill ? kFauxBoldOffset : 0.0f;
 	float fauxItalicPad = g_useFauxItalic ? std::abs(kFauxItalicShear) * contentH : 0.0f;
 
-	// Še•ûŒü‚ÌƒpƒfƒBƒ“ƒO‡Œv
+	// å„æ–¹å‘ã®ãƒ‘ãƒ‡ã‚£ãƒ³ã‚°åˆè¨ˆ
 	float leftPad = outlinePad + shadowLeft + blurMargin + fauxBoldPad + fauxItalicPad * 0.5f;
 	float rightPad = outlinePad + shadowRight + blurMargin + fauxBoldPad + fauxItalicPad * 0.5f;
 	float topPad = outlinePad + shadowTop + blurMargin + fauxBoldPad;
 	float bottomPad = outlinePad + shadowBottom + blurMargin + fauxBoldPad;
 
-	// ƒTƒCƒYƒNƒ‰ƒ“ƒvŠÖ”
+	// ã‚µã‚¤ã‚ºã‚¯ãƒ©ãƒ³ãƒ—é–¢æ•°
 	auto clampSize = [](float v)
 	{
 		return std::min(8192.0f, std::max(1.0f, v));
 	};
 
-	// ÅIƒTƒCƒYZo
+	// æœ€çµ‚ã‚µã‚¤ã‚ºç®—å‡º
 	float finalW = autoW ? (contentW + leftPad + rightPad) : reqW;
 	float finalH = autoH ? (contentH + topPad + bottomPad) : reqH;
 	finalW = clampSize(finalW);
@@ -1420,36 +1455,36 @@ bool func_proc_video(FILTER_PROC_VIDEO *video)
 		logger->info(logger, msg);
 	}
 
-	// ƒŒƒCƒAƒEƒg“à‚Éû‚ß‚é‚½‚ß‚Ì“à•”—ÌˆæiƒpƒfƒBƒ“ƒO‚ğœ‚¢‚½—Ìˆæj‚ğZo
+	// ãƒ¬ã‚¤ã‚¢ã‚¦ãƒˆå†…ã«åã‚ã‚‹ãŸã‚ã®å†…éƒ¨é ˜åŸŸï¼ˆãƒ‘ãƒ‡ã‚£ãƒ³ã‚°ã‚’é™¤ã„ãŸé ˜åŸŸï¼‰ã‚’ç®—å‡º
 	float innerW = std::max(1.0f, finalW - leftPad - rightPad);
 	float innerH = std::max(1.0f, finalH - topPad - bottomPad);
 
-	// ©“®ƒŒƒCƒAƒEƒg‚ÍAƒ†[ƒU[‚Ì—v–]‚Ç‚¨‚èƒŒƒCƒAƒEƒg‘S‘ÌifinalW/finalHj‚ğ
-	// TextLayout ‚ÌƒTƒCƒY‚Æ‚µ‚Äg‚¢A•`‰æƒIƒtƒZƒbƒg‚Í (0,0) ‚É‚µ‚Ä
-	// TextLayout ‚Ì‰¡/c‘µ‚¦‚ÅˆÊ’uŒˆ‚ß‚·‚éB
+	// è‡ªå‹•ãƒ¬ã‚¤ã‚¢ã‚¦ãƒˆæ™‚ã¯ã€ãƒ¦ãƒ¼ã‚¶ãƒ¼ã®è¦æœ›ã©ãŠã‚Šãƒ¬ã‚¤ã‚¢ã‚¦ãƒˆå…¨ä½“ï¼ˆfinalW/finalHï¼‰ã‚’
+	// TextLayout ã®ã‚µã‚¤ã‚ºã¨ã—ã¦ä½¿ã„ã€æç”»ã‚ªãƒ•ã‚»ãƒƒãƒˆã¯ (0,0) ã«ã—ã¦
+	// TextLayout ã®æ¨ª/ç¸¦æƒãˆã§ä½ç½®æ±ºã‚ã™ã‚‹ã€‚
 	float drawOffsetX = 0.0f;
 	float drawOffsetY = 0.0f;
 
 	ComPtr<IDWriteTextLayout> textLayout;
 	if (autoW || autoH)
 	{
-		// ©“®•ûŒü‚Í final size ‚ğg—p
+		// è‡ªå‹•æ–¹å‘ã¯ final size ã‚’ä½¿ç”¨
 		layoutW = std::max(1.0f, finalW);
 		layoutH = std::max(1.0f, finalH);
-		// •`‰æ‚Í¶ã‚©‚çŠJni0,0j‚µ‚Ä TextLayout ‚Ì‘µ‚¦‚É”C‚¹‚é
+		// æç”»ã¯å·¦ä¸Šã‹ã‚‰é–‹å§‹ï¼ˆ0,0ï¼‰ã—ã¦ TextLayout ã®æƒãˆã«ä»»ã›ã‚‹
 		drawOffsetX = 0.0f;
 		drawOffsetY = 0.0f;
 	}
 	else
 	{
-		// ŒÅ’èƒTƒCƒY: “à•”—Ìˆæ‚Å TextLayout ‚ğì‚èA•`‰æƒIƒtƒZƒbƒg‚ÍƒpƒfƒBƒ“ƒOŠJnˆÊ’u
+		// å›ºå®šã‚µã‚¤ã‚º: å†…éƒ¨é ˜åŸŸã§ TextLayout ã‚’ä½œã‚Šã€æç”»ã‚ªãƒ•ã‚»ãƒƒãƒˆã¯ãƒ‘ãƒ‡ã‚£ãƒ³ã‚°é–‹å§‹ä½ç½®
 		layoutW = std::max(1.0f, innerW);
 		layoutH = std::max(1.0f, innerH);
 		drawOffsetX = leftPad;
 		drawOffsetY = topPad;
 	}
 
-	// TextLayoutì¬
+	// TextLayoutä½œæˆ
 	if (!CreateTextLayout(layoutW, layoutH, textLayout, disableWordWrap))
 	{
 		return false;
@@ -1461,21 +1496,21 @@ bool func_proc_video(FILTER_PROC_VIDEO *video)
 		logger->info(logger, msg2);
 	}
 
-	// ‰æ‘œƒTƒCƒYİ’è
+	// ç”»åƒã‚µã‚¤ã‚ºè¨­å®š
 	video->set_image_data(nullptr, static_cast<int>(std::ceil(finalW)), static_cast<int>(std::ceil(finalH)));
 	auto texture = video->get_image_texture2d();
 
-	// D3D11 Deviceæ“¾
+	// D3D11 Deviceå–å¾—
 	ComPtr<ID3D11Device> d3dDevice;
 	texture->GetDevice(&d3dDevice);
 
-	// DXGI Deviceæ“¾
+	// DXGI Deviceå–å¾—
 	ComPtr<IDXGIDevice> dxgiDevice;
 	HRESULT hr = d3dDevice.As(&dxgiDevice);
 	if (FAILED(hr))
 		return false;
 
-	// D2D Deviceì¬iƒLƒƒƒbƒVƒ…j
+	// D2D Deviceä½œæˆï¼ˆã‚­ãƒ£ãƒƒã‚·ãƒ¥ï¼‰
 	if (!g_d2dDevice)
 	{
 		hr = g_d2dFactory->CreateDevice(dxgiDevice.Get(), &g_d2dDevice);
@@ -1483,7 +1518,7 @@ bool func_proc_video(FILTER_PROC_VIDEO *video)
 			return false;
 	}
 
-	// D2D DeviceContextì¬
+	// D2D DeviceContextä½œæˆ
 	ComPtr<ID2D1DeviceContext6> d2dContext;
 	hr = g_d2dDevice->CreateDeviceContext(
 		D2D1_DEVICE_CONTEXT_OPTIONS_NONE,
@@ -1491,13 +1526,13 @@ bool func_proc_video(FILTER_PROC_VIDEO *video)
 	if (FAILED(hr))
 		return false;
 
-	// DXGI Surfaceæ“¾
+	// DXGI Surfaceå–å¾—
 	ComPtr<IDXGISurface> dxgiSurface;
 	hr = texture->QueryInterface(__uuidof(IDXGISurface), reinterpret_cast<void **>(dxgiSurface.GetAddressOf()));
 	if (FAILED(hr))
 		return false;
 
-	// D2D Bitmapì¬
+	// D2D Bitmapä½œæˆ
 	D2D1_BITMAP_PROPERTIES1 bitmapProps = D2D1::BitmapProperties1(
 		D2D1_BITMAP_OPTIONS_TARGET,
 		D2D1::PixelFormat(
@@ -1512,10 +1547,10 @@ bool func_proc_video(FILTER_PROC_VIDEO *video)
 	if (FAILED(hr))
 		return false;
 
-	// ƒŒƒ“ƒ_[ƒ^[ƒQƒbƒgİ’è
+	// ãƒ¬ãƒ³ãƒ€ãƒ¼ã‚¿ãƒ¼ã‚²ãƒƒãƒˆè¨­å®š
 	d2dContext->SetTarget(targetBitmap.Get());
 
-	// ƒŒƒ“ƒ_ƒŠƒ“ƒO
+	// ãƒ¬ãƒ³ãƒ€ãƒªãƒ³ã‚°
 	hr = RenderText(d2dContext.Get(), textLayout.Get(), drawOffsetX, drawOffsetY);
 	if (hr == D2DERR_RECREATE_TARGET)
 	{
