@@ -1,54 +1,40 @@
-# 可変フォント軸の完全対応
+# バリアブルフォント軸（対応状況）
 
-## 実装仕様
+このプラグインは DirectWrite のバリアブルフォント軸（OpenType の 4 文字タグ）を利用して、テキスト描画の軸値を調整します。
 
-### 登録済み軸（OpenType標準）
+## 現状の仕様（重要）
 
-| タグ | 長い名前 | 説明 |
-|------|----------|------|
-| `wght` | `weight` | ウェイト（太さ） |
-| `wdth` | `width` | 幅 |
-| `slnt` | `slant` | スラント（傾き） |
-| `opsz` | `optical` | オプティカルサイズ |
-| `ital` | `italic` | イタリック |
+- UI から操作できるのは、プラグイン側で **あらかじめ用意した軸のみ** です（任意の 4 文字タグを UI で追加する機能はありません）。
+- フォントが対応していない軸は **無視** されます。
+- 指定した値は、フォントが持つ範囲（min/max）へ **自動的にクランプ** されます。
 
-### カスタム軸（例）
+## UI に用意している軸
 
-| タグ | 説明 |
-|------|------|
-| `GRAD` | グレード（濃淡） |
-| `XTRA` | X透明度 |
-| `XOPQ` | X不透明度 |
-| `YOPQ` | Y不透明度 |
-| `YTLC` | Y透明度（小文字） |
-| `YTUC` | Y透明度（大文字） |
-| `YTAS` | Y透明度（アセンダー） |
-| `YTDE` | Y透明度（ディセンダー） |
-| `YTFI` | Y透明度（数字） |
+### OpenType 標準（代表）
 
-### 動的軸サポート
+| タグ | UI 表示 | 説明 |
+|------|--------|------|
+| `wght` | `Weight` | ウェイト（太さ） |
+| `wdth` | `Width` | 幅 |
+| `slnt` | `Slant` | スラント（傾き） |
+| `opsz` | `Optical Size` | オプティカルサイズ |
+| `ital` | `Italic Axis` | イタリック軸 |
 
-**すべての4文字タグが自動的にサポートされます。**
+### カスタム軸（フォント依存）
 
-実装:
-```cpp
-// 4文字タグを自動変換
-if (tagName.length() == 4) {
-    tag = DWRITE_MAKE_FONT_AXIS_TAG(
-        tagName[0], tagName[1], tagName[2], tagName[3]
-    );
-}
-```
+| タグ | UI 表示 | 備考 |
+|------|--------|------|
+| `GRAD` | `Grade (GRAD)` | フォントが対応している場合のみ有効 |
+| `XTRA` | `XTRA` | 同上 |
+| `XOPQ` | `XOPQ` | 同上 |
+| `YOPQ` | `YOPQ` | 同上 |
+| `YTLC` | `YTLC` | 同上 |
+| `YTUC` | `YTUC` | 同上 |
+| `YTAS` | `YTAS` | 同上 |
+| `YTDE` | `YTDE` | 同上 |
+| `YTFI` | `YTFI` | 同上 |
 
-### 自動範囲クランプ
+## 開発者向けメモ
 
-フォントが持つ軸の範囲内に値を自動的に制限します:
-
-```cpp
-// フォントから軸範囲を取得
-fontResource->GetFontAxisRanges(axisRanges.data(), axisCount);
-
-// 値をクランプ
-finalValue = std::max(minValue, std::min(maxValue, value));
-```
+UI に新しい軸を追加したい場合は、`VariableFont.cpp` の `kAxisControls` と対応する `FILTER_ITEM_TRACK` を追加してください。
 
