@@ -34,7 +34,7 @@
 | `YTDE` | `YTDE` | 同上 |
 | `YTFI` | `YTFI` | 同上 |
 
-## 開発者向けメモ
+## 利用者向け
 
-UI に新しい軸を追加したい場合は、`VariableFont.cpp` の `kAxisControls` と対応する `FILTER_ITEM_TRACK` を追加してください。
+[リポジトリ](https://github.com/rokujyushi/Variable-Font-Plug-ins)からIssueを作成して機能追加の要望を出してください。
 
