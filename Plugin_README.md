@@ -1,4 +1,4 @@
-# Variable Font Text（テキスト(VF)）
+# Variable Font（テキスト(VF)）
 
 AviUtl ExEdit2 向けの「テキスト生成」メディアオブジェクトです。DirectWrite/Direct2D でテキストを描画し、バリアブルフォント（可変軸）をトラックバーで調整できます。
 
