@@ -222,7 +222,7 @@ FILTER_PLUGIN_TABLE filter_plugin_table = {
 	FILTER_PLUGIN_TABLE::FLAG_VIDEO | FILTER_PLUGIN_TABLE::FLAG_INPUT, // フラグ
 	L"Variable Font Text",											   // プラグインの名前
 	L"テキスト(VF)",												   // ラベルの初期値
-	L"Variable Font Text 1.0.0",								   // プラグインの情報
+	L"Variable Font Text 1.0.0 By 黒猫大福",								   // プラグインの情報
 	items,															   // 設定項目の定義
 	func_proc_video,												   // 画像フィルタ処理関数へのポインタ
 	nullptr															   // 音声フィルタ処理関数へのポインタ (使用しない)
