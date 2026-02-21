@@ -1,0 +1,165 @@
+﻿// GCMZConfig.h - GCMZDrops 統合設定ヘッダー
+
+// GCMZDrops.aux2 の相対パス (プラグインルートフォルダ基準)
+#define GCMZ_RELATIVE_PATH L"GCMZDrops\\GCMZDrops.aux2"
+
+// 登録するハンドラースクリプトの内容 (Lua コード)
+#define GCMZ_SCRIPT R"lua(
+local P = {}
+
+local bit = require("bit")
+local ini = require("\\Plugin\\GCMZDrops\\GCMZScript\\ini.lua")
+if not ini then
+    ini = require("ini")
+end
+if not ini then
+    debug_print("ini.lua の読み込みに失敗しました。")
+end
+
+local function round(n)
+    n = tonumber(n) or 0
+    if n >= 0 then
+        return math.floor(n + 0.5)
+    end
+    return math.ceil(n - 0.5)
+end
+
+local function get_dir(filepath)
+    local dirpath = tostring(filepath):match("(.+)[/\\][^/\\]+$")
+    return dirpath
+end
+
+local function get_filename(filepath)
+    local name = tostring(filepath):match("([^/\\]+)$")
+    return (name:gsub("%.[^%.]+$", ""))
+end
+
+local function get_ext(filepath)
+    local ext = tostring(filepath:match("[^.]+$"))
+    ext = ext and ext:lower()
+    return ext
+end
+
+local function change_ext(filepath, new_ext)
+    local newfilepath = tostring(filepath):gsub("%.[^%.]+$", "")
+    return newfilepath .. "." .. new_ext
+end
+
+-- ハンドラー名（必須）
+P.name = "テキスト、音声ファイルをVariable Font Textオブジェクトに変換"
+
+-- 優先度（省略時は 1000）
+-- 数値が小さいほど先に実行されます
+P.priority = 1000
+
+function P.drag_enter(files, state)
+    -- ドラッグ開始時の処理
+    for index, file in ipairs(files) do
+        return get_ext(file.filepath) == "wav" or get_ext(file.filepath) == "txt"
+    end
+    return false
+end
+
+function P.drag_leave()
+    -- ドラッグがタイムラインから離れたときの処理
+end
+
+local function files_package(files)
+    local function package()
+        return {
+            Audio_file = "",
+            Txt_file = ""
+        }
+    end
+
+    local files_ = files
+    local package_files = {}
+    for index, file in ipairs(files_) do
+        local info = gcmz.get_media_info(file.filepath)
+        local package_file = package()
+        if get_ext(file.filepath) == "wav" then
+            package_file.Audio_file = file.filepath
+        end
+        if get_ext(file.filepath) == "txt" then
+            package_file.Txt_file = file.filepath
+        else
+            local txt_path = change_ext(package_file.Audio_file, "txt")
+            local txt_file = io.open(txt_path, "r")
+            if txt_file then
+                package_file.Txt_file = txt_path
+            end
+            txt_file:close()
+        end
+
+        package_files[#package_files + 1] = package_file
+    end
+    return package_files
+end
+
+function P.drop(files, state)
+    if state.alt then
+        return false
+    end
+
+    local data = gcmz.get_project_data()
+    local obj = ini.new()
+
+    local totalframes = 0
+    local obj_idx = 0
+    local group_idx = 1
+
+    for _, file in ipairs(files_package(files)) do
+        local duration_sec = 1
+        if file.Audio_file then
+            local info = gcmz.get_media_info(file.Audio_file)
+            if info and info.total_time then
+                duration_sec = info.total_time
+            end
+        end
+
+            local length_frames = round(duration_sec * (data.rate / data.scale))
+        if length_frames < 1 then
+            length_frames = 1
+        end
+        local start_frame = totalframes
+        local end_frame = totalframes + length_frames - 1
+
+        if file.Audio_file then
+            -- 音声
+            obj:set(tostring(obj_idx), "layer", "0")
+            obj:set(tostring(obj_idx), "frame", tostring(start_frame) .. "," .. tostring(end_frame))
+            obj:set(tostring(obj_idx), "group", tostring(group_idx))
+            obj:set(tostring(obj_idx) .. ".0", "effect.name", "音声ファイル")
+            obj:set(tostring(obj_idx) .. ".0", "ファイル", tostring(file.Audio_file))
+            obj:set(tostring(obj_idx) .. ".1", "effect.name", "音声再生")
+            obj_idx = obj_idx + 1
+        end
+
+        if file.Txt_file then
+            -- セリフ準備
+            obj:set(tostring(obj_idx), "layer", "1")
+            obj:set(tostring(obj_idx), "frame", tostring(start_frame) .. "," .. tostring(end_frame))
+            obj:set(tostring(obj_idx), "group", tostring(group_idx))
+            obj:set(tostring(obj_idx) .. ".0", "effect.name", "Variable Font Text")
+            obj:set(tostring(obj_idx) .. ".0", "テキスト", tostring(text))
+            obj:set(tostring(obj_idx) .. ".1", "effect.name", "標準描画")
+            obj_idx = obj_idx + 1
+        end
+
+        totalframes = end_frame + 1
+        group_idx = group_idx + 1
+    end
+
+    local temp_path = gcmz.create_temp_file("wav2obj.object")
+    local temp_file = io.open(temp_path, "wb")
+    if not temp_file then
+        debug_print("一時ファイルの作成に失敗しました: " .. temp_path)
+        return false
+    end
+    temp_file:write(tostring(obj))
+    temp_file:close()
+    return true
+end
+
+return P
+)lua"
