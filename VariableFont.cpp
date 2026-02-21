@@ -29,6 +29,7 @@
 using Microsoft::WRL::ComPtr;
 
 #include "filter2.h"
+#include "plugin2.h"
 #include "logger2.h"
 
 #pragma comment(lib, "d3d11.lib")
@@ -40,34 +41,34 @@ using Microsoft::WRL::ComPtr;
 //	グローバル変数
 //---------------------------------------------------------------------
 // Direct2D / DirectWrite のグローバルオブジェクト（プラグイン全体で共有）
-ComPtr<ID2D1Device6> g_d2dDevice;                       // D2D デバイス
-ComPtr<ID2D1Factory7> g_d2dFactory;                     // D2D ファクトリ
-ComPtr<IDWriteFactory7> g_dwriteFactory;                // DirectWrite ファクトリ
+ComPtr<ID2D1Device6> g_d2dDevice;		 // D2D デバイス
+ComPtr<ID2D1Factory7> g_d2dFactory;		 // D2D ファクトリ
+ComPtr<IDWriteFactory7> g_dwriteFactory; // DirectWrite ファクトリ
 
 // フォントキャッシュ周りの情報
-ComPtr<IDWriteFontFace5> g_cachedFontFace;              // キャッシュしているフォントフェイス
-std::wstring g_cachedFontKey;                           // フォントキャッシュのキー
-ComPtr<IDWriteFontCollection> g_cachedFontCollection;   // フォントコレクション
-std::wstring g_cachedFamilyName;                        // キャッシュされたファミリ名
-std::unordered_set<DWRITE_FONT_AXIS_TAG> g_cachedAxisTags; // キャッシュされている軸タグ集合
+ComPtr<IDWriteFontFace5> g_cachedFontFace;											 // キャッシュしているフォントフェイス
+std::wstring g_cachedFontKey;														 // フォントキャッシュのキー
+ComPtr<IDWriteFontCollection> g_cachedFontCollection;								 // フォントコレクション
+std::wstring g_cachedFamilyName;													 // キャッシュされたファミリ名
+std::unordered_set<DWRITE_FONT_AXIS_TAG> g_cachedAxisTags;							 // キャッシュされている軸タグ集合
 std::unordered_map<DWRITE_FONT_AXIS_TAG, DWRITE_FONT_AXIS_RANGE> g_cachedAxisRanges; // 軸のレンジ情報
-std::vector<DWRITE_FONT_AXIS_VALUE> g_cachedAxisValues; // キャッシュされた軸値リスト
-std::wstring g_cachedAxisFontKey;                       // 軸キャッシュのキー
-bool g_axisCacheValid = false;                          // 軸キャッシュが有効か
+std::vector<DWRITE_FONT_AXIS_VALUE> g_cachedAxisValues;								 // キャッシュされた軸値リスト
+std::wstring g_cachedAxisFontKey;													 // 軸キャッシュのキー
+bool g_axisCacheValid = false;														 // 軸キャッシュが有効か
 
 // ロギングハンドル（外部から設定される）
 LOG_HANDLE *logger;
 
 // 擬似スタイルの状態フラグ
 // `CreateTextLayout` で状態を更新し、`RenderText` で参照して描画時に適用します。
-bool g_useFauxItalic = false;   // 擬似イタリックを適用するか
+bool g_useFauxItalic = false;	// 擬似イタリックを適用するか
 bool g_useFauxBoldFill = false; // 擬似ボールド（塗り重ね）を適用するか
 
 // 擬似スタイルの定数（固定値）
 // - イタリックは水平せん断（shear）で近似
 // - ボールドは複数回の塗りつぶしオフセットで近似
-constexpr float kFauxItalicShear = -0.2f;   // 左方向に傾ける値（負は左傾斜）
-constexpr float kFauxBoldOffset = 1.75f;    // 擬似ボールド時のオフセット距離
+constexpr float kFauxItalicShear = -0.2f; // 左方向に傾ける値（負は左傾斜）
+constexpr float kFauxBoldOffset = 1.75f;  // 擬似ボールド時のオフセット距離
 
 //---------------------------------------------------------------------
 //	前方宣言
@@ -222,7 +223,7 @@ FILTER_PLUGIN_TABLE filter_plugin_table = {
 	FILTER_PLUGIN_TABLE::FLAG_VIDEO | FILTER_PLUGIN_TABLE::FLAG_INPUT, // フラグ
 	L"Variable Font Text",											   // プラグインの名前
 	L"テキスト(VF)",												   // ラベルの初期値
-	L"Variable Font Text 1.0.0 By 黒猫大福",								   // プラグインの情報
+	L"Variable Font Text 1.0.0 By 黒猫大福",						   // プラグインの情報
 	items,															   // 設定項目の定義
 	func_proc_video,												   // 画像フィルタ処理関数へのポインタ
 	nullptr															   // 音声フィルタ処理関数へのポインタ (使用しない)
@@ -289,11 +290,16 @@ EXTERN_C __declspec(dllexport) void UninitializePlugin()
 }
 
 //---------------------------------------------------------------------
-//	フィルタ構造体のポインタを渡す関数
+//	汎用プラグイン登録関数
 //---------------------------------------------------------------------
-EXTERN_C __declspec(dllexport) FILTER_PLUGIN_TABLE *GetFilterPluginTable(void)
+EXTERN_C __declspec(dllexport) void RegisterPlugin(HOST_APP_TABLE *host)
 {
-	return &filter_plugin_table;
+	if (!host)
+	{
+		return;
+	}
+
+	host->register_filter_plugin(&filter_plugin_table);
 }
 
 //---------------------------------------------------------------------
@@ -398,9 +404,9 @@ const wchar_t *GetInputText()
 // フォントフェイスとフォントコレクションをまとめたもの
 struct FontResources
 {
-	ComPtr<IDWriteFontFace5> fontFace; // フォントの対応機能を取得する
+	ComPtr<IDWriteFontFace5> fontFace;			  // フォントの対応機能を取得する
 	ComPtr<IDWriteFontCollection> fontCollection; // フォントファミリを取得する
-	std::wstring familyName; // フォントファミリ名
+	std::wstring familyName;					  // フォントファミリ名
 };
 
 // システムフォントから指定されたフォントファミリ名のフォントを読み込む
@@ -1017,7 +1023,7 @@ public:
 		if (FAILED(hr))
 			return hr;
 
-			// 座標変換を適用して縁取りを描画
+		// 座標変換を適用して縁取りを描画
 		ComPtr<ID2D1TransformedGeometry> transformed;
 		hr = m_factory->CreateTransformedGeometry(
 			path.Get(),
@@ -1215,7 +1221,7 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 															 shadowColor.value.r / 255.0f,
 															 shadowColor.value.g / 255.0f,
 															 shadowColor.value.b / 255.0f,
-										 static_cast<float>(shadowOpacity.value / 100.0)));
+															 static_cast<float>(shadowOpacity.value / 100.0)));
 				effect.As(&shadowImage);
 			}
 			// ぼかしエフェクト適用
