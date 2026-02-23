@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <string>
 #include <cmath> // sin/cos
+#include <cwctype>
 #include <vector>
 #include <unordered_set>
 #include <unordered_map>
@@ -76,6 +77,167 @@ constexpr float kFauxBoldOffset = 1.75f;  // 擬似ボールド時のオフセ�
 bool func_proc_video(FILTER_PROC_VIDEO *video);
 void InvalidateAxisCache();
 void InvalidateFontCache();
+
+namespace
+{
+	// INI制御用の定数
+	static const wchar_t *kSwitchSection = L"Switch";
+	static const wchar_t *kHandleKey = L"Handle";
+	static const wchar_t *kLayerMenuName = L"VariableFont変換の有効/無効を切替";
+
+	// このモジュールの配置先ディレクトリを取得
+	std::wstring GetModuleDirectory()
+	{
+		wchar_t path[MAX_PATH] = {};
+		HMODULE module = nullptr;
+		if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+								reinterpret_cast<LPCWSTR>(&GetModuleDirectory),
+								&module))
+		{
+			return L"";
+		}
+
+		DWORD len = GetModuleFileNameW(module, path, MAX_PATH);
+		if (len == 0 || len >= MAX_PATH)
+		{
+			return L"";
+		}
+
+		std::wstring full(path);
+		const auto pos = full.find_last_of(L"\\/");
+		if (pos == std::wstring::npos)
+		{
+			return L"";
+		}
+		return full.substr(0, pos);
+	}
+
+	bool FileExists(const std::wstring &path)
+	{
+		DWORD attr = GetFileAttributesW(path.c_str());
+		return (attr != INVALID_FILE_ATTRIBUTES) && ((attr & FILE_ATTRIBUTE_DIRECTORY) == 0);
+	}
+
+	std::vector<std::wstring> GetIniPathCandidates()
+	{
+		std::vector<std::wstring> r;
+		const std::wstring moduleDir = GetModuleDirectory();
+		if (!moduleDir.empty())
+		{
+			r.push_back(moduleDir + L"\\GCMZDrops\\GCMZScript\\VariableFont.ini");
+			r.push_back(moduleDir + L"\\VariableFont.ini");
+		}
+		r.push_back(L"C:\\ProgramData\\aviutl2\\Plugin\\GCMZDrops\\GCMZScript\\VariableFont.ini");
+		return r;
+	}
+
+	std::wstring ResolveIniPathForRead()
+	{
+		for (const auto &path : GetIniPathCandidates())
+		{
+			if (FileExists(path))
+			{
+				return path;
+			}
+		}
+		return L"";
+	}
+
+	std::wstring ResolveIniPathForWrite()
+	{
+		const std::wstring existing = ResolveIniPathForRead();
+		if (!existing.empty())
+		{
+			return existing;
+		}
+
+		// Lua 側の既定配置を優先
+		const auto candidates = GetIniPathCandidates();
+		for (const auto &path : candidates)
+		{
+			if (path.find(L"GCMZDrops\\GCMZScript\\VariableFont.ini") != std::wstring::npos)
+			{
+				return path;
+			}
+		}
+
+		return candidates.empty() ? L"VariableFont.ini" : candidates.front();
+	}
+
+	bool ParseBoolText(const wchar_t *v, bool defaultValue)
+	{
+		if (!v)
+		{
+			return defaultValue;
+		}
+
+		std::wstring s(v);
+		s.erase(std::remove_if(s.begin(), s.end(), [](wchar_t ch)
+							   { return ch == L' ' || ch == L'\t' || ch == L'\r' || ch == L'\n'; }),
+				s.end());
+		std::transform(s.begin(), s.end(), s.begin(), [](wchar_t ch)
+					   { return static_cast<wchar_t>(std::towlower(ch)); });
+
+		if (s == L"1" || s == L"true" || s == L"on" || s == L"yes")
+		{
+			return true;
+		}
+		if (s == L"0" || s == L"false" || s == L"off" || s == L"no")
+		{
+			return false;
+		}
+
+		return defaultValue;
+	}
+
+	bool ReadHandleSwitch(bool defaultValue = true)
+	{
+		const std::wstring iniPath = ResolveIniPathForRead();
+		if (iniPath.empty())
+		{
+			return defaultValue;
+		}
+
+		wchar_t buf[64] = {};
+		GetPrivateProfileStringW(kSwitchSection, kHandleKey, L"", buf, static_cast<DWORD>(std::size(buf)), iniPath.c_str());
+		if (buf[0] == L'\0')
+		{
+			return defaultValue;
+		}
+
+		return ParseBoolText(buf, defaultValue);
+	}
+
+	bool WriteHandleSwitch(bool enabled)
+	{
+		const std::wstring iniPath = ResolveIniPathForWrite();
+		if (iniPath.empty())
+		{
+			return false;
+		}
+
+		return WritePrivateProfileStringW(kSwitchSection, kHandleKey, enabled ? L"true" : L"false", iniPath.c_str()) != FALSE;
+	}
+
+	void func_proc_layer_menu_toggle_handle(EDIT_SECTION * /*edit*/)
+	{
+		const bool current = ReadHandleSwitch(true);
+		const bool next = !current;
+		const bool ok = WriteHandleSwitch(next);
+
+		if (logger)
+		{
+			if (ok)
+			{
+				logger->info(logger, next ? L"VariableFont変換を有効化しました。" : L"VariableFont変換を無効化しました。");
+			}
+			else
+			{
+				logger->error(logger, L"VariableFont.ini の書き換えに失敗しました。");
+			}
+		}
+	}
+}
 
 struct AxisControl
 {
@@ -300,6 +462,7 @@ EXTERN_C __declspec(dllexport) void RegisterPlugin(HOST_APP_TABLE *host)
 	}
 
 	host->register_filter_plugin(&filter_plugin_table);
+	host->register_layer_menu(kLayerMenuName, func_proc_layer_menu_toggle_handle);
 }
 
 //---------------------------------------------------------------------

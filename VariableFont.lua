@@ -2,24 +2,24 @@ local P = {}
 
 local bit = require("bit")
 local ini = require("ini")
-if not ini then
-    do
-        local script_dir = gcmz.get_script_directory()
-        local ini_path = script_dir .. "/ini.lua"
-        local ok, ret = pcall(dofile, ini_path)
-        if ok and type(ret) == "table" then
-            ini = ret
-        else
-            -- ƒtƒH[ƒ‹ƒoƒbƒNiGCMZDrops‘¤‚Å require ‚ª’Ê‚é‚È‚çj
-            ini = require("ini")
-            if not ini then
-                debug_print("ini ‚Ì“Ç‚İ‚İ‚É¸”s")
-                -- ini –³‚µ‚Å‘±s‚·‚é‚È‚ç return ‚µ‚È‚¢
-                return P -- ‚ ‚é‚¢‚Í return false ‘Š“–‚Ì‹““®‚É‚·‚é
-            end
-        end
-    end
-end
+-- if not ini then
+--     do
+--         local script_dir = gcmz.get_script_directory()
+--         local ini_path = script_dir .. "/ini.lua"
+--         local ok, ret = pcall(dofile, ini_path)
+--         if ok and type(ret) == "table" then
+--             ini = ret
+--         else
+--             -- ãƒ•ã‚©ãƒ¼ãƒ«ãƒãƒƒã‚¯ï¼ˆGCMZDropså´ã§ require ãŒé€šã‚‹ãªã‚‰ï¼‰
+--             ini = require("ini")
+--             if not ini then
+--                 debug_print("ini ã®èª­ã¿è¾¼ã¿ã«å¤±æ•—")
+--                 -- ini ç„¡ã—ã§ç¶šè¡Œã™ã‚‹ãªã‚‰ return ã—ãªã„
+--                 return P -- ã‚ã‚‹ã„ã¯ return false ç›¸å½“ã®æŒ™å‹•ã«ã™ã‚‹
+--             end
+--         end
+--     end
+-- end
 
 local function round(n)
     n = tonumber(n) or 0
@@ -50,15 +50,15 @@ local function change_ext(filepath, new_ext)
     return newfilepath .. "." .. new_ext
 end
 
--- ƒnƒ“ƒhƒ‰[–¼i•K{j
-P.name = "ƒeƒLƒXƒgA‰¹ºƒtƒ@ƒCƒ‹‚ğVariable Font TextƒIƒuƒWƒFƒNƒg‚É•ÏŠ·"
+-- ãƒãƒ³ãƒ‰ãƒ©ãƒ¼åï¼ˆå¿…é ˆï¼‰
+P.name = "ãƒ†ã‚­ã‚¹ãƒˆã€éŸ³å£°ãƒ•ã‚¡ã‚¤ãƒ«ã‚’Variable Font Textã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã«å¤‰æ›"
 
--- —Dæ“xiÈ—ª‚Í 1000j
--- ”’l‚ª¬‚³‚¢‚Ù‚Çæ‚ÉÀs‚³‚ê‚Ü‚·
+-- å„ªå…ˆåº¦ï¼ˆçœç•¥æ™‚ã¯ 1000ï¼‰
+-- æ•°å€¤ãŒå°ã•ã„ã»ã©å…ˆã«å®Ÿè¡Œã•ã‚Œã¾ã™
 P.priority = 1000
 
 function P.drag_enter(files, state)
-    -- ƒhƒ‰ƒbƒOŠJn‚Ìˆ—
+    -- ãƒ‰ãƒ©ãƒƒã‚°é–‹å§‹æ™‚ã®å‡¦ç†
     for index, file in ipairs(files) do
         return get_ext(file.filepath) == "wav" or get_ext(file.filepath) == "txt"
     end
@@ -66,7 +66,7 @@ function P.drag_enter(files, state)
 end
 
 function P.drag_leave()
-    -- ƒhƒ‰ƒbƒO‚ªƒ^ƒCƒ€ƒ‰ƒCƒ“‚©‚ç—£‚ê‚½‚Æ‚«‚Ìˆ—
+    -- ãƒ‰ãƒ©ãƒƒã‚°ãŒã‚¿ã‚¤ãƒ ãƒ©ã‚¤ãƒ³ã‹ã‚‰é›¢ã‚ŒãŸã¨ãã®å‡¦ç†
 end
 
 local function files_package(files)
@@ -111,7 +111,42 @@ local function text_from_file(file_path)
     return content
 end
 
+local function parse_bool(v)
+    if type(v) == "boolean" then
+        return v
+    end
+    local s = tostring(v or ""):lower()
+    return s == "1" or s == "true" or s == "on" or s == "yes"
+end
+
+local function should_continue_by_ini()
+    local script_dir = gcmz.get_script_directory()
+    local ini_path = script_dir .. "/VariableFont.ini"
+
+    local exists = io.open(ini_path, "r")
+    if not exists then
+        return true
+    end
+    exists:close()
+
+    local ok, conf = ini.load(ini_path)
+    if not ok then
+        debug_print("VariableFont.ini ã®èª­ã¿è¾¼ã¿ã«å¤±æ•—ã—ã¾ã—ãŸã€‚")
+        return true
+    end
+    local value = conf:get("Switch", "Handle", nil)
+    if value == nil then
+        return true
+    end
+
+    return parse_bool(value)
+end
+
 function P.drop(files, state)
+    if should_continue_by_ini() then
+        debug_print("ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆå¤‰æ›ã¯ç„¡åŠ¹ã§ã™ã€‚")
+        return false
+    end
     if state.alt then
         return false
     end
@@ -140,24 +175,24 @@ function P.drop(files, state)
         local end_frame = totalframes + length_frames - 1
 
         if file.Audio_file then
-            -- ‰¹º
+            -- éŸ³å£°
             obj:set(tostring(obj_idx), "layer", "0")
             obj:set(tostring(obj_idx), "frame", tostring(start_frame) .. "," .. tostring(end_frame))
             obj:set(tostring(obj_idx), "group", tostring(group_idx))
-            obj:set(tostring(obj_idx) .. ".0", "effect.name", "‰¹ºƒtƒ@ƒCƒ‹")
-            obj:set(tostring(obj_idx) .. ".0", "ƒtƒ@ƒCƒ‹", tostring(file.Audio_file))
-            obj:set(tostring(obj_idx) .. ".1", "effect.name", "‰¹ºÄ¶")
+            obj:set(tostring(obj_idx) .. ".0", "effect.name", "éŸ³å£°ãƒ•ã‚¡ã‚¤ãƒ«")
+            obj:set(tostring(obj_idx) .. ".0", "ãƒ•ã‚¡ã‚¤ãƒ«", tostring(file.Audio_file))
+            obj:set(tostring(obj_idx) .. ".1", "effect.name", "éŸ³å£°å†ç”Ÿ")
             obj_idx = obj_idx + 1
         end
 
         if file.Txt_file then
-            -- ƒZƒŠƒt€”õ
+            -- ã‚»ãƒªãƒ•æº–å‚™
             obj:set(tostring(obj_idx), "layer", "1")
             obj:set(tostring(obj_idx), "frame", tostring(start_frame) .. "," .. tostring(end_frame))
             obj:set(tostring(obj_idx), "group", tostring(group_idx))
             obj:set(tostring(obj_idx) .. ".0", "effect.name", "Variable Font Text")
-            obj:set(tostring(obj_idx) .. ".0", "ƒeƒLƒXƒg", tostring(text_from_file(file.Txt_file)))
-            obj:set(tostring(obj_idx) .. ".1", "effect.name", "•W€•`‰æ")
+            obj:set(tostring(obj_idx) .. ".0", "ãƒ†ã‚­ã‚¹ãƒˆ", tostring(text_from_file(file.Txt_file)))
+            obj:set(tostring(obj_idx) .. ".1", "effect.name", "æ¨™æº–æç”»")
             obj_idx = obj_idx + 1
         end
 
@@ -168,7 +203,7 @@ function P.drop(files, state)
     local temp_path = gcmz.create_temp_file("wav2obj.object")
     local temp_file = io.open(temp_path, "wb")
     if not temp_file then
-        debug_print("ˆêƒtƒ@ƒCƒ‹‚Ìì¬‚É¸”s‚µ‚Ü‚µ‚½: " .. temp_path)
+        debug_print("ä¸€æ™‚ãƒ•ã‚¡ã‚¤ãƒ«ã®ä½œæˆã«å¤±æ•—ã—ã¾ã—ãŸ: " .. temp_path)
         return false
     end
     temp_file:write(tostring(obj))
