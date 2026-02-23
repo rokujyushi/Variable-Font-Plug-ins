@@ -102,31 +102,28 @@ auto fontSize = FILTER_ITEM_TRACK(L"サイズ", 40.0, 1.0, 1000.0, 0.1);
 auto fontColor = FILTER_ITEM_COLOR(L"文字色", 0xffffff);
 auto bold = FILTER_ITEM_CHECK(L"B", false);
 auto italic = FILTER_ITEM_CHECK(L"I", false);
-auto charSpacing = FILTER_ITEM_TRACK(L"字間", 0.0, -100.0, 100.0, 0.1);
 auto group_font_end = FILTER_ITEM_GROUP(L"");
 
-// 影設定グループ
-auto group_shadow = FILTER_ITEM_GROUP(L"影設定", false);
-auto shadowEnabled = FILTER_ITEM_CHECK(L"影を表示", false);
-auto shadowColor = FILTER_ITEM_COLOR(L"影色", 0xffffff);
-auto shadowOffsetX = FILTER_ITEM_TRACK(L"影X", 15.0, -100.0, 100.0, 0.1);
-auto shadowOffsetY = FILTER_ITEM_TRACK(L"影Y", 10.0, -100.0, 100.0, 0.1);
-auto shadowOpacity = FILTER_ITEM_TRACK(L"影濃度", 100.0, 0.0, 100.0, 1.0);
-auto shadowBlur = FILTER_ITEM_TRACK(L"影ぼかし", 0.0, 0.0, 20.0, 0.1);
-auto group_shadow_end = FILTER_ITEM_GROUP(L"");
-
-// 縁取り設定グループ
-auto group_outline = FILTER_ITEM_GROUP(L"縁取り設定", false);
-auto outlineEnabled = FILTER_ITEM_CHECK(L"縁取りを表示", false);
-auto outlineColor = FILTER_ITEM_COLOR(L"縁取り色", 0xffffff);
-auto outlineWidth = FILTER_ITEM_TRACK(L"縁取り幅", 5.0, 0.0, 100.0, 0.1);
-FILTER_ITEM_SELECT::ITEM outlineStyleItems[] = {
-	{L"丸", 0},
-	{L"角", 1},
+// レイアウトグループ
+auto group_layout = FILTER_ITEM_GROUP(L"レイアウト");
+// 0 を指定するとテキスト内容から自動算出する
+auto imageWidth = FILTER_ITEM_TRACK(L"横幅", 0, 0, 8192, 1);
+auto imageHeight = FILTER_ITEM_TRACK(L"縦幅", 0, 0, 8192, 1);
+FILTER_ITEM_SELECT::ITEM alignItems[] = {
+	{L"左寄せ[上]", 0},
+	{L"左寄せ[中]", 1},
+	{L"左寄せ[下]", 2},
+	{L"中央揃え[上]", 3},
+	{L"中央揃え[中]", 4},
+	{L"中央揃え[下]", 5},
+	{L"右寄せ[上]", 6},
+	{L"右寄せ[中]", 7},
+	{L"右寄せ[下]", 8},
 	{nullptr}};
-auto outlineStyle = FILTER_ITEM_SELECT(L"縁取りスタイル", 0, outlineStyleItems);
-auto clipping = FILTER_ITEM_CHECK(L"切り抜き", false);
-auto group_outline_end = FILTER_ITEM_GROUP(L"");
+auto textAlign = FILTER_ITEM_SELECT(L"文字揃え", 4, alignItems);
+auto charSpacing = FILTER_ITEM_TRACK(L"字間", 0.0, -100.0, 100.0, 0.1);
+auto lineSpacing = FILTER_ITEM_TRACK(L"行間", 0.0, -100.0, 100.0, 0.1);
+auto group_layout_end = FILTER_ITEM_GROUP(L"");
 
 // バリアブル軸グループ
 // バリアブルフォントの各種軸を設定する。
@@ -170,25 +167,28 @@ const AxisControl kAxisControls[] = {
 	{DWRITE_MAKE_FONT_AXIS_TAG('Y', 'T', 'F', 'I'), &ytfi_axis},
 };
 
-// レイアウトグループ
-auto group_layout = FILTER_ITEM_GROUP(L"レイアウト");
-// 0 を指定するとテキスト内容から自動算出する
-auto imageWidth = FILTER_ITEM_TRACK(L"横幅", 0, 0, 8192, 1);
-auto imageHeight = FILTER_ITEM_TRACK(L"縦幅", 0, 0, 8192, 1);
-FILTER_ITEM_SELECT::ITEM alignItems[] = {
-	{L"左寄せ[上]", 0},
-	{L"左寄せ[中]", 1},
-	{L"左寄せ[下]", 2},
-	{L"中央揃え[上]", 3},
-	{L"中央揃え[中]", 4},
-	{L"中央揃え[下]", 5},
-	{L"右寄せ[上]", 6},
-	{L"右寄せ[中]", 7},
-	{L"右寄せ[下]", 8},
+// 影設定グループ
+auto group_shadow = FILTER_ITEM_GROUP(L"影設定", false);
+auto shadowEnabled = FILTER_ITEM_CHECK(L"影を表示", false);
+auto shadowColor = FILTER_ITEM_COLOR(L"影色", 0xffffff);
+auto shadowOffsetX = FILTER_ITEM_TRACK(L"影X", 15.0, -100.0, 100.0, 0.1);
+auto shadowOffsetY = FILTER_ITEM_TRACK(L"影Y", 10.0, -100.0, 100.0, 0.1);
+auto shadowOpacity = FILTER_ITEM_TRACK(L"影濃度", 100.0, 0.0, 100.0, 1.0);
+auto shadowBlur = FILTER_ITEM_TRACK(L"影ぼかし", 0.0, 0.0, 20.0, 0.1);
+auto group_shadow_end = FILTER_ITEM_GROUP(L"");
+
+// 縁取り設定グループ
+auto group_outline = FILTER_ITEM_GROUP(L"縁取り設定", false);
+auto outlineEnabled = FILTER_ITEM_CHECK(L"縁取りを表示", false);
+auto outlineColor = FILTER_ITEM_COLOR(L"縁取り色", 0xffffff);
+auto outlineWidth = FILTER_ITEM_TRACK(L"縁取り幅", 5.0, 0.0, 100.0, 0.1);
+FILTER_ITEM_SELECT::ITEM outlineStyleItems[] = {
+	{L"丸", 0},
+	{L"角", 1},
 	{nullptr}};
-auto textAlign = FILTER_ITEM_SELECT(L"文字揃え", 4, alignItems);
-auto lineSpacing = FILTER_ITEM_TRACK(L"行間", 0.0, -100.0, 100.0, 0.1);
-auto group_layout_end = FILTER_ITEM_GROUP(L"");
+auto outlineStyle = FILTER_ITEM_SELECT(L"縁取りスタイル", 0, outlineStyleItems);
+auto clipping = FILTER_ITEM_CHECK(L"切り抜き", false);
+auto group_outline_end = FILTER_ITEM_GROUP(L"");
 
 // アニメーショングループ
 // auto group_animation = FILTER_ITEM_GROUP(L"アニメーション", false);
@@ -199,16 +199,16 @@ auto group_layout_end = FILTER_ITEM_GROUP(L"");
 auto textInput = FILTER_ITEM_TEXT(L"テキスト", L"");
 
 void *items[] = {
-	&group_font, &fontFile, &fontFamilyInput, &fontSize, &fontColor, &bold, &italic, &charSpacing, &group_font_end,
+	&group_font, &fontFile, &fontFamilyInput, &fontSize, &fontColor, &bold, &italic, &group_font_end,
+
+	&group_layout, &imageWidth, &imageHeight, &textAlign, &charSpacing, &lineSpacing, &group_layout_end,
+
+	&group_variable, &weight, &width_axis, &slant, &opsz, &ital_axis, &grad_axis, &xtra_axis, &xopq_axis, &yopq_axis, &ytlc_axis, &ytuc_axis, &ytas_axis, &ytde_axis, &ytfi_axis, &axisUpdateMode, &group_variable_end,
 
 	&group_shadow, &shadowEnabled, &shadowColor, &shadowOffsetX, &shadowOffsetY,
 	&shadowOpacity, &shadowBlur, &group_shadow_end,
 
 	&group_outline, &outlineEnabled, &outlineColor, &outlineWidth, &outlineStyle, &clipping, &group_outline_end,
-
-	&group_variable, &weight, &width_axis, &slant, &opsz, &ital_axis, &grad_axis, &xtra_axis, &xopq_axis, &yopq_axis, &ytlc_axis, &ytuc_axis, &ytas_axis, &ytde_axis, &ytfi_axis, &axisUpdateMode, &group_variable_end,
-
-	&group_layout, &imageWidth, &imageHeight, &textAlign, &lineSpacing, &group_layout_end,
 
 	// &group_animation, &displaySpeed, &group_animation_end,
 
@@ -223,7 +223,7 @@ FILTER_PLUGIN_TABLE filter_plugin_table = {
 	FILTER_PLUGIN_TABLE::FLAG_VIDEO | FILTER_PLUGIN_TABLE::FLAG_INPUT, // フラグ
 	L"Variable Font Text",											   // プラグインの名前
 	L"テキスト(VF)",												   // ラベルの初期値
-	L"Variable Font Text 1.0.0 By 黒猫大福",						   // プラグインの情報
+	L"Variable Font Text 2.1.0 By 黒猫大福",						   // プラグインの情報
 	items,															   // 設定項目の定義
 	func_proc_video,												   // 画像フィルタ処理関数へのポインタ
 	nullptr															   // 音声フィルタ処理関数へのポインタ (使用しない)
@@ -1112,12 +1112,14 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 		{-0.70710677f, -0.70710677f},
 	};
 
-	auto applyOptionalFauxItalicTransform = [&](D2D1_MATRIX_3X2_F &prevTransform)
+	auto applyOptionalFauxItalicTransform = [&](D2D1_MATRIX_3X2_F &prevTransform, float pivotX, float pivotY)
 	{
 		d2dContext->GetTransform(&prevTransform);
 		if (g_useFauxItalic)
 		{
-			d2dContext->SetTransform(fauxItalicMatrix * prevTransform);
+			const D2D1_MATRIX_3X2_F toPivot = D2D1::Matrix3x2F::Translation(-pivotX, -pivotY);
+			const D2D1_MATRIX_3X2_F fromPivot = D2D1::Matrix3x2F::Translation(pivotX, pivotY);
+			d2dContext->SetTransform(fromPivot * fauxItalicMatrix * toPivot * prevTransform);
 		}
 	};
 
@@ -1198,7 +1200,7 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 		if (SUCCEEDED(d2dContext->CreateCommandList(&shadowCommandList)))
 		{
 			D2D1_MATRIX_3X2_F prevTransform;
-			applyOptionalFauxItalicTransform(prevTransform);
+			applyOptionalFauxItalicTransform(prevTransform, offsetX, offsetY);
 
 			d2dContext->SetTarget(shadowCommandList.Get());
 			d2dContext->BeginDraw();
@@ -1248,7 +1250,7 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 	// メイン描画で擬似イタリック（せん断）を適用する場合は、現在の変換を保存し
 	// せん断行列を乗算してから描画を行います。描画後は必ず元の変換に戻します。
 	D2D1_MATRIX_3X2_F prevMainTransform;
-	applyOptionalFauxItalicTransform(prevMainTransform);
+	applyOptionalFauxItalicTransform(prevMainTransform, offsetX, offsetY);
 
 	// 影描画処理
 	// - シャドウはまずコマンドリスト上にテキストを描画し、
@@ -1337,35 +1339,9 @@ HRESULT RenderText(ID2D1DeviceContext6 *d2dContext, IDWriteTextLayout *textLayou
 			renderer->Release();
 		}
 	}
-
-	// // 縁取り描画が失敗した場合のフォールバック:
-	// // 8方向(45度刻み)に描画をずらして疑似的な縁を作る。
-	// // 本来のアウトラインより品質は落ちるが、最低限の視認性を確保する。
-	// if (!outlined && outlineEnabled.value && outlineWidth.value > 0.0f)
-	// {
-	// 	float offset = static_cast<float>(outlineWidth.value);
-	// 	int samples = 8;
-	// 	for (int angle = 0; angle < samples; angle++)
-	// 	{
-	// 		float rad = static_cast<float>(angle * 3.14159265 / 4.0);
-	// 		float dx = cosf(rad) * offset;
-	// 		float dy = sinf(rad) * offset;
-	// 		d2dContext->DrawTextLayout(
-	// 			D2D1::Point2F(dx + offsetX, dy + offsetY),
-	// 			textLayout,
-	// 			outlineBrush ? outlineBrush.Get() : textBrush.Get());
-	// 	}
-	// 	// フォールバック縁取り後に塗りつぶしを行うことで、
-	// 	// 文字本体をくっきり表示しつつ縁だけを残す。
-	// 	// 無効時は縁のみの描画となる。
-	// 	if (clipping.value)
-	// 	{
-	// 		d2dContext->DrawTextLayout(D2D1::Point2F(offsetX, offsetY), textLayout, textBrush.Get());
-	// 	}
-	// }
 	// アウトライン成功時でも `clipping` が無効なら本体は描画しない。
 	// これで「縁取りのみ（内側は透明）」の表現になる。
-	else if (!outlineEnabled.value || outlineWidth.value <= 0.0f || clipping.value)
+	if (!clipping.value)
 	{
 		drawFillText(textBrush.Get(), offsetX, offsetY);
 	}
@@ -1439,7 +1415,7 @@ bool func_proc_video(FILTER_PROC_VIDEO *video)
 
 	// 各方向のパディング合計
 	float leftPad = outlinePad + shadowLeft + blurMargin + fauxBoldPad + fauxItalicPad * 0.5f;
-	float rightPad = outlinePad + shadowRight + blurMargin + fauxBoldPad + fauxItalicPad * 0.5f;
+	float rightPad = outlinePad + shadowRight + blurMargin + fauxBoldPad + 0.0f * 0.5f;
 	float topPad = outlinePad + shadowTop + blurMargin + fauxBoldPad;
 	float bottomPad = outlinePad + shadowBottom + blurMargin + fauxBoldPad;
 
@@ -1477,9 +1453,9 @@ bool func_proc_video(FILTER_PROC_VIDEO *video)
 		// 自動方向は final size を使用
 		layoutW = std::max(1.0f, finalW);
 		layoutH = std::max(1.0f, finalH);
-		// 描画は左上から開始（0,0）して TextLayout の揃えに任せる
-		drawOffsetX = 0.0f;
-		drawOffsetY = 0.0f;
+		// // 描画は左上から開始（0,0）して TextLayout の揃えに任せる
+		// drawOffsetX = drawOffsetX - leftPad - rightPad;
+		// drawOffsetY = drawOffsetY - topPad - bottomPad;
 	}
 	else
 	{
