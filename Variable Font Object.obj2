@@ -1,9 +1,9 @@
---information:VariableFontObj
+--information:Variable Font Object
 --label:テキスト(VF)
 --text@text:テキスト,
 --group:フォント設定,tune
 --file@font_file:フォントファイル
---font@font_family:フォント名(システム),Yu Gothic UI
+--font@font_family:フォント,Yu Gothic UI
 --track@size:サイズ,1,300,48,1
 --color@color:文字色,0xffffff
 --check@faux_bold:ボールド,false
