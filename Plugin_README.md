@@ -1,6 +1,13 @@
-# Variable Font（テキスト(VF)）
+# Variable Font（テキスト(VF) / Variable Font Object）
 
-AviUtl ExEdit2 向けの「テキスト生成」メディアオブジェクトです。DirectWrite/Direct2D でテキストを描画し、バリアブルフォント（可変軸）をトラックバーで調整できます。
+AviUtl ExEdit2 向けの「テキスト生成」メディアオブジェクトとカスタムオブジェクトです。
+DirectWrite/Direct2D でテキストを描画し、バリアブルフォント（可変軸）をトラックバーで調整できます。
+
+## 構成
+
+- `VariableFont.auf2`: フィルタプラグイン本体（テキスト(VF)）
+- `VariableFontModule.mod2`: Script モジュール（`render_to_buffer` を提供）
+- `Variable Font Object.obj2`: カスタムオブジェクト（文字別描画、制御タグ対応）
 
 ## 対応環境
 
@@ -10,12 +17,16 @@ AviUtl ExEdit2 向けの「テキスト生成」メディアオブジェクト�
 
 ## インストール
 
-1. `VariableFont.auf2` を用意します（ビルド済み配布、または自分でビルド）。
-2. AviUtl2 のプラグインフォルダにコピーします。
+1. `VariableFont.auf2` を AviUtl2 のプラグインフォルダにコピーします。
 	 - 例: `C:\ProgramData\aviutl2\Plugin\`
+2. `VariableFontModule.mod2` と `Variable Font Object.obj2` を Script 配下へコピーします。
+	 - 例: `C:\ProgramData\aviutl2\Script\VariableFontObj\`
 3. AviUtl2 を再起動します。
 
-ビルド出力は通常 `bin\x64\Release\VariableFont.auf2` です。
+ビルド出力は通常以下です。
+
+- `bin\x64\Release\VariableFont.auf2`
+- `bin\x64\Release\VariableFontModule.mod2`
 
 ## 使い方（基本）
 
@@ -24,6 +35,16 @@ AviUtl ExEdit2 向けの「テキスト生成」メディアオブジェクト�
 3. `フォント設定` でフォント・サイズ・色を調整します。
 4. 可変フォントの場合は `バリアブル軸` で `Weight` などを調整します。
 5. 必要に応じて `影設定` / `縁取り設定` / `レイアウト` を調整します。
+
+## 使い方（カスタムオブジェクト）
+
+1. オブジェクト追加から `Variable Font Object`（`Variable Font Object.obj2`）を追加します。
+2. `テキスト`、`フォントファイル` / `フォント名(システム)`、`サイズ`、`文字色` を設定します。
+3. 可変フォントの場合は `バリアブル軸` を調整します。
+4. 必要に応じて `個別オブジェクト化` を切り替えます。
+5. 文字単位で差分を付けたい場合は `文字別制御タグ(配列)` を利用します。
+
+カスタムオブジェクトでは、本文内制御タグに加えて `文字別制御タグ(配列)` による後段上書きが可能です。
 
 ## 設定項目
 
@@ -78,6 +99,36 @@ AviUtl ExEdit2 向けの「テキスト生成」メディアオブジェクト�
 
 注意: `横幅` か `縦幅` のどちらかを 0（自動）にしている場合、折り返しが無効になります。折り返しを使いたい場合は両方に値を入れてください。
 
+### カスタムオブジェクト固有
+
+- `個別オブジェクト化`: ON で文字ごとに `multiobject` 描画、OFF で単一画像描画
+- `文字別制御タグ(配列)`: 表示文字インデックスごとに制御タグを後段で適用
+- `行揃え`: 左/中央/右（行単位）
+
+本文内制御タグ:
+
+- `<#...>`: 文字色
+- `<s...>`: サイズ
+- `<@...>`: フォント/擬似スタイル
+- `<v...>`: 可変軸（位置指定または `key=value` 指定）
+
+`<v...>` の位置指定は次の順です。
+
+1. `weight`
+2. `width`
+3. `slant`
+4. `opsz`
+5. `grad`
+6. `xtra`
+7. `xopq`
+8. `yopq`
+9. `ytlc`
+10. `ytuc`
+11. `ytas`
+12. `ytde`
+13. `ytfi`
+14. `ital`
+
 ## よくある困りごと
 
 - 可変軸が効かない
@@ -90,7 +141,9 @@ AviUtl ExEdit2 向けの「テキスト生成」メディアオブジェクト�
 
 - 推奨: Visual Studio 2022（x64, v143）
 - `Release|x64` でビルド
-- PowerShell から: `build_release.ps1`
+- PowerShell から:
+	- `build_release.ps1`（`VariableFont.auf2`）
+	- `build_release_module.ps1`（`VariableFontModule.mod2`）
 
 ## ライセンス
 
