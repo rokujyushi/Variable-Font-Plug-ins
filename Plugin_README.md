@@ -5,7 +5,7 @@ DirectWrite/Direct2D でテキストを描画し、バリアブルフォント�
 
 ## 構成
 
-- `VariableFont.auf2`: フィルタプラグイン本体（テキスト(VF)）
+- `VariableFont.aux2`: 汎用プラグイン本体（テキスト(VF)フィルタを内蔵）
 - `VariableFontModule.mod2`: Script モジュール（`render_to_buffer` を提供）
 - `Variable Font Object.obj2`: カスタムオブジェクト（文字別描画、制御タグ対応）
 
@@ -17,7 +17,7 @@ DirectWrite/Direct2D でテキストを描画し、バリアブルフォント�
 
 ## インストール
 
-1. `VariableFont.auf2` を AviUtl2 のプラグインフォルダにコピーします。
+1. `VariableFont.aux2` を AviUtl2 のプラグインフォルダにコピーします。
 	 - 例: `C:\ProgramData\aviutl2\Plugin\`
 2. `VariableFontModule.mod2` と `Variable Font Object.obj2` を Script 配下へコピーします。
 	 - 例: `C:\ProgramData\aviutl2\Script\VariableFontObj\`
@@ -25,8 +25,8 @@ DirectWrite/Direct2D でテキストを描画し、バリアブルフォント�
 
 ビルド出力は通常以下です。
 
-- `bin\x64\Release\VariableFont.auf2`
-- `bin\x64\Release\VariableFontModule.mod2`
+- `target\release\VariableFont.dll`（配置時に`VariableFont.aux2`へ変更）
+- `target\release\VariableFontModule.dll`（配置時に`VariableFontModule.mod2`へ変更）
 
 ## 使い方（基本）
 
@@ -139,10 +139,10 @@ DirectWrite/Direct2D でテキストを描画し、バリアブルフォント�
 
 ## 開発者向け（ビルド）
 
-- 推奨: Visual Studio 2022（x64, v143）
-- `Release|x64` でビルド
+- Rust stable（`x86_64-pc-windows-msvc`）
+- `cargo build --workspace --release`でビルド
 - PowerShell から:
-	- `build_release.ps1`（`VariableFont.auf2`）
+	- `build_release.ps1`（aviutl2-cliによるビルド・配置）
 	- `build_release_module.ps1`（`VariableFontModule.mod2`）
 
 ## ライセンス

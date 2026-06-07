@@ -1,0 +1,19 @@
+[package]
+name = "variable-font-plugin"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[lib]
+name = "VariableFont"
+crate-type = ["cdylib"]
+
+[dependencies]
+anyhow.workspace = true
+aviutl2.workspace = true
+tracing.workspace = true
+variable-font-core.workspace = true
+windows.workspace = true
+

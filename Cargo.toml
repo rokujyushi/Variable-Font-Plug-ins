@@ -1,0 +1,37 @@
+[workspace]
+members = [
+    "crates/variable-font-core",
+    "crates/variable-font-module",
+    "crates/variable-font-plugin",
+]
+resolver = "2"
+
+[workspace.package]
+version = "2.1.0"
+edition = "2024"
+license = "MIT"
+authors = ["黒猫大福"]
+repository = "https://github.com/rokujyushi/Variable-Font-Plug-ins"
+
+[workspace.dependencies]
+anyhow = "1"
+aviutl2 = "0"
+tracing = "0.1"
+variable-font-core = { path = "crates/variable-font-core" }
+windows = { version = "0.62", features = [
+    "Foundation_Numerics",
+    "Win32_Foundation",
+    "Win32_Graphics_Direct2D",
+    "Win32_Graphics_Direct2D_Common",
+    "Win32_Graphics_DirectWrite",
+    "Win32_Graphics_Dxgi_Common",
+    "Win32_Graphics_Imaging",
+    "Win32_System_Com",
+    "Win32_System_LibraryLoader",
+] }
+windows-numerics = "0.3"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

@@ -1,14 +1,15 @@
-# Build VariableFont (Release x64)
 $ErrorActionPreference = "Stop"
 Push-Location $PSScriptRoot
-& "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\Launch-VsDevShell.ps1" -Arch amd64
-Set-Location $PSScriptRoot
-
-# Clean obj/bin folders
-if (Test-Path ".\obj") { Remove-Item ".\obj" -Recurse -Force }
-if (Test-Path ".\bin") { Remove-Item ".\bin" -Recurse -Force }
-
-# Build VariableFont
-msbuild ".\VariableFont.vcxproj" /p:Configuration=Release /p:Platform=x64
-
-Pop-Location
+try {
+    $command = Get-Command "au2" -ErrorAction SilentlyContinue
+    $localCli = "I:\aviutl2-cli\au2-v0.8.3-windows.exe"
+    if ($command) {
+        & $command.Source develop --profile release --skip-start
+    } elseif (Test-Path $localCli) {
+        & $localCli develop --profile release --skip-start
+    } else {
+        throw "aviutl2-cli (au2) was not found."
+    }
+} finally {
+    Pop-Location
+}

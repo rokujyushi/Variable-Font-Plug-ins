@@ -7,3 +7,6 @@
 obj/*
 .vs/*
 bin/*
+target/
+.aviutl2-cli/
+release/

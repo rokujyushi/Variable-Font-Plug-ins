@@ -1,0 +1,70 @@
+[project]
+id = "rokujyushi.variable-font"
+name = "Variable Font"
+version = "3.0.0"
+
+[build_group]
+debug_all = ["cargo build --workspace"]
+release_all = ["cargo build --workspace --release"]
+
+[development]
+aviutl2_version = "latest"
+
+[preview]
+aviutl2_version = "latest"
+install_dir = "./.aviutl2-cli/preview"
+profile = "release"
+
+[release]
+output_dir = "release"
+package_id = "rokujyushi.variable-font"
+package_name = "Variable Font v{version}"
+package_information = "Variable Font v{version} by 黒猫大福"
+zip_name = "VariableFont-v{version}"
+profile = "release"
+
+[artifacts.variable_font_plugin]
+destination = "Plugin/VariableFont/VariableFont.aux2"
+build = { group = "debug_all" }
+
+[artifacts.variable_font_plugin.profiles.debug]
+source = "target/debug/VariableFont.dll"
+
+[artifacts.variable_font_plugin.profiles.release]
+source = "target/release/VariableFont.dll"
+build = { group = "release_all" }
+
+[artifacts.variable_font_module]
+destination = "Script/VariableFont/VariableFontModule.mod2"
+build = { group = "debug_all" }
+
+[artifacts.variable_font_module.profiles.debug]
+source = "target/debug/VariableFontModule.dll"
+
+[artifacts.variable_font_module.profiles.release]
+source = "target/release/VariableFontModule.dll"
+build = { group = "release_all" }
+
+[artifacts.variable_font_object]
+source = "Variable Font Object.obj2"
+destination = "Script/VariableFont/Variable Font Object.obj2"
+
+[artifacts.variable_font_ini]
+source = "VariableFont.ini"
+destination = "Script/VariableFont/VariableFont.ini"
+
+[artifacts.variable_font_lua]
+source = "VariableFont.lua"
+destination = "Plugin/GCMZDrops/GCMZScript/VariableFont.lua"
+
+[artifacts.variable_font_gcmz_ini]
+source = "VariableFont.ini"
+destination = "Plugin/GCMZDrops/GCMZScript/VariableFont.ini"
+
+[artifacts.readme]
+source = "Plugin_README.md"
+destination = "Plugin/VariableFont/README.md"
+
+[artifacts.license]
+source = "LICENSE"
+destination = "Plugin/VariableFont/LICENSE"

@@ -3,8 +3,9 @@
 - `バリアブルフォントプラグイン/` : VariableFont プラグイン本体、サンプル、ビルドスクリプト、出力バイナリ。
 
 ## 概要
-- `VariableFont`（`VariableFont.cpp`）: フィルタプラグイン（`.auf2`）
-- `VariableFontModule`（`VariableFontModule.cpp`）: Script モジュール（`.mod2`）
+- `VariableFont`（`crates/variable-font-plugin`）: 汎用プラグイン内蔵フィルタ（`.aux2`）
+- `VariableFontModule`（`crates/variable-font-module`）: Script モジュール（`.mod2`）
+- `variable-font-core`: DirectWrite / Direct2D 共通レンダラー
 - `Variable Font Object.obj2`: カスタムオブジェクト（文字別制御タグ、個別オブジェクト化対応）
 
 カスタムオブジェクトは `obj.module("VariableFontModule")` を使って `render_to_buffer` を呼び出し、可変軸つきテキストを画像化して描画します。
@@ -12,22 +13,22 @@
 ## ビルド方法
 PowerShell スクリプトを利用してください。
 
-- `build_release.ps1` : `VariableFont.auf2` をビルド
+- `build_release.ps1` : RustワークスペースをReleaseビルドし、aviutl2-cliで配置
 - `build_release_module.ps1` : `VariableFontModule.mod2` をビルド
 
-出力バイナリは各プロジェクトの `bin\x64\Release\` に生成されます。
+CargoのDLLは`target\release\`、配布パッケージは`release\`に生成されます。
 
 ## 配置の目安
 
-- `VariableFont.auf2` は `Plugin` フォルダへ配置
+- `VariableFont.aux2` は `Plugin` フォルダへ配置
 - `VariableFontModule.mod2` と `Variable Font Object.obj2` は `Script` 配下へ配置
 - 例: `C:\ProgramData\aviutl2\Script\VariableFontObj\`
 
 ## 依存・設定
-- SDK ヘッダは `aviutl2_sdk/` にあり、各プロジェクトの include に設定済みです。
-- Visual Studio のリンカに `d3d11.lib` 等が必要な場合があります（GPU 処理を行うプラグインで必要）。
-- `VariableFontModule` は `d2d1.lib` / `dwrite.lib` / `windowscodecs.lib` を利用します。
-- プロジェクトは Unicode ビルド（`CharacterSet=Unicode`）を前提としています。
+- Rust stable（`x86_64-pc-windows-msvc`）とCargoを使用します。
+- `aviutl2` crateの0.x最新版を利用し、解決版は`Cargo.lock`に記録します。
+- DirectWrite / Direct2D / WICは`windows` crate経由で利用します。
+- 旧C++実装とVisual Studioプロジェクトは`legacy/cpp/`に保存しています。
 
 ## ライセンス・外部資料
 - SDK のライセンスや詳細は `aviutl2_sdk/license.txt` を確認してください。

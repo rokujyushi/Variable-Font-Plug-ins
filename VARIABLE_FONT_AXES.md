@@ -4,7 +4,7 @@
 
 対象:
 
-- `VariableFont.auf2`（テキスト(VF)）
+- `VariableFont.aux2`（テキスト(VF)）
 - `Variable Font Object.obj2` + `VariableFontModule.mod2`
 
 ## 現状の仕様（重要）
