@@ -1,25 +1,6 @@
 local P = {}
 
-local bit = require("bit")
 local ini = require("ini")
--- if not ini then
---     do
---         local script_dir = gcmz.get_script_directory()
---         local ini_path = script_dir .. "/ini.lua"
---         local ok, ret = pcall(dofile, ini_path)
---         if ok and type(ret) == "table" then
---             ini = ret
---         else
---             -- フォールバック（GCMZDrops側で require が通るなら）
---             ini = require("ini")
---             if not ini then
---                 debug_print("ini の読み込みに失敗")
---                 -- ini 無しで続行するなら return しない
---                 return P -- あるいは return false 相当の挙動にする
---             end
---         end
---     end
--- end
 
 local function round(n)
     n = tonumber(n) or 0
@@ -29,25 +10,26 @@ local function round(n)
     return math.ceil(n - 0.5)
 end
 
-local function get_dir(filepath)
-    local dirpath = tostring(filepath):match("(.+)[/\\][^/\\]+$")
-    return dirpath
-end
-
-local function get_filename(filepath)
-    local name = tostring(filepath):match("([^/\\]+)$")
-    return (name:gsub("%.[^%.]+$", ""))
-end
-
 local function get_ext(filepath)
-    local ext = tostring(filepath:match("[^.]+$"))
-    ext = ext and ext:lower()
-    return ext
+    return tostring(filepath or ""):match("%.([^./\\]+)$") and
+        tostring(filepath):match("%.([^./\\]+)$"):lower() or ""
 end
 
 local function change_ext(filepath, new_ext)
-    local newfilepath = tostring(filepath):gsub("%.[^%.]+$", "")
+    local newfilepath = tostring(filepath or ""):gsub("%.[^./\\]+$", "")
     return newfilepath .. "." .. new_ext
+end
+
+local function package_key(filepath)
+    return tostring(filepath or ""):gsub("%.[^./\\]+$", ""):lower()
+end
+
+local function is_supported_file(file)
+    if type(file) ~= "table" or type(file.filepath) ~= "string" then
+        return false
+    end
+    local ext = get_ext(file.filepath)
+    return ext == "wav" or ext == "txt"
 end
 
 -- ハンドラー名（必須）
@@ -58,9 +40,10 @@ P.name = "テキスト、音声ファイルをVariable Font Textオブジェク�
 P.priority = 1000
 
 function P.drag_enter(files, state)
-    -- ドラッグ開始時の処理
-    for index, file in ipairs(files) do
-        return get_ext(file.filepath) == "wav" or get_ext(file.filepath) == "txt"
+    for _, file in ipairs(files) do
+        if is_supported_file(file) then
+            return true
+        end
     end
     return false
 end
@@ -70,39 +53,46 @@ function P.drag_leave()
 end
 
 local function files_package(files)
-    local function package()
-        return {
-            Audio_file = "",
-            Txt_file = ""
-        }
-    end
+    local packages_by_key = {}
+    local package_order = {}
 
-    local files_ = files
-    local package_files = {}
-    for index, file in ipairs(files_) do
-        local info = gcmz.get_media_info(file.filepath)
-        local package_file = package()
-        if get_ext(file.filepath) == "wav" then
-            package_file.Audio_file = file.filepath
-        end
-        if get_ext(file.filepath) == "txt" then
-            package_file.Txt_file = file.filepath
-        else
-            local txt_path = change_ext(package_file.Audio_file, "txt")
-            local txt_file = io.open(txt_path, "r")
-            if txt_file then
-                package_file.Txt_file = txt_path
-                txt_file:close()
+    for _, file in ipairs(files) do
+        if is_supported_file(file) then
+            local key = package_key(file.filepath)
+            local package_file = packages_by_key[key]
+            if not package_file then
+                package_file = {
+                    audio_file = nil,
+                    text_file = nil,
+                }
+                packages_by_key[key] = package_file
+                package_order[#package_order + 1] = package_file
+            end
+
+            if get_ext(file.filepath) == "wav" then
+                package_file.audio_file = file.filepath
+            else
+                package_file.text_file = file.filepath
             end
         end
-
-        package_files[#package_files + 1] = package_file
     end
-    return package_files
+
+    for _, package_file in ipairs(package_order) do
+        if package_file.audio_file and not package_file.text_file then
+            local txt_path = change_ext(package_file.audio_file, "txt")
+            local txt_file = io.open(txt_path, "rb")
+            if txt_file then
+                txt_file:close()
+                package_file.text_file = txt_path
+            end
+        end
+    end
+
+    return package_order
 end
 
 local function text_from_file(file_path)
-    local file = io.open(file_path, "r")
+    local file = io.open(file_path, "rb")
     if not file then
         return ""
     end
@@ -119,19 +109,19 @@ local function parse_bool(v)
     return s == "1" or s == "true" or s == "on" or s == "yes"
 end
 
-local function should_continue_by_ini()
+local function is_conversion_enabled()
     local script_dir = gcmz.get_script_directory()
     local ini_path = script_dir .. "/VariableFont.ini"
 
-    local exists = io.open(ini_path, "r")
+    local exists = io.open(ini_path, "rb")
     if not exists then
         return true
     end
     exists:close()
 
-    local ok, conf = ini.load(ini_path)
-    if not ok then
-        debug_print("VariableFont.ini の読み込みに失敗しました。")
+    local ok, conf = pcall(ini.load, ini_path)
+    if not ok or type(conf) ~= "table" then
+        debug_print("VariableFont.ini の読み込みに失敗しました: " .. tostring(conf))
         return true
     end
     local value = conf:get("Switch", "Handle", nil)
@@ -143,27 +133,39 @@ local function should_continue_by_ini()
 end
 
 function P.drop(files, state)
-    if should_continue_by_ini() then
+    if not is_conversion_enabled() then
         debug_print("オブジェクト変換は無効です。")
-        return false
+        return
     end
-    if state.alt then
-        return false
+    if state and state.alt then
+        return
     end
 
     local data = gcmz.get_project_data()
+    if not data or not data.rate or not data.scale or data.scale == 0 then
+        debug_print("プロジェクト情報の取得に失敗しました。")
+        return
+    end
+
+    local packages = files_package(files)
+    if #packages == 0 then
+        return
+    end
+
     local obj = ini.new()
 
     local totalframes = 0
     local obj_idx = 0
     local group_idx = 1
 
-    for _, file in ipairs(files_package(files)) do
+    for _, file in ipairs(packages) do
         local duration_sec = 1
-        if file.Audio_file then
-            local info = gcmz.get_media_info(file.Audio_file)
+        if file.audio_file then
+            local info, err = gcmz.get_media_info(file.audio_file)
             if info and info.total_time then
                 duration_sec = info.total_time
+            elseif not info then
+                debug_print("メディア情報の取得に失敗しました: " .. tostring(err))
             end
         end
 
@@ -174,24 +176,24 @@ function P.drop(files, state)
         local start_frame = totalframes
         local end_frame = totalframes + length_frames - 1
 
-        if file.Audio_file then
+        if file.audio_file then
             -- 音声
             obj:set(tostring(obj_idx), "layer", "0")
             obj:set(tostring(obj_idx), "frame", tostring(start_frame) .. "," .. tostring(end_frame))
             obj:set(tostring(obj_idx), "group", tostring(group_idx))
             obj:set(tostring(obj_idx) .. ".0", "effect.name", "音声ファイル")
-            obj:set(tostring(obj_idx) .. ".0", "ファイル", tostring(file.Audio_file))
+            obj:set(tostring(obj_idx) .. ".0", "ファイル", tostring(file.audio_file))
             obj:set(tostring(obj_idx) .. ".1", "effect.name", "音声再生")
             obj_idx = obj_idx + 1
         end
 
-        if file.Txt_file then
+        if file.text_file then
             -- セリフ準備
             obj:set(tostring(obj_idx), "layer", "1")
             obj:set(tostring(obj_idx), "frame", tostring(start_frame) .. "," .. tostring(end_frame))
             obj:set(tostring(obj_idx), "group", tostring(group_idx))
             obj:set(tostring(obj_idx) .. ".0", "effect.name", "Variable Font Text")
-            obj:set(tostring(obj_idx) .. ".0", "テキスト", tostring(text_from_file(file.Txt_file)))
+            obj:set(tostring(obj_idx) .. ".0", "テキスト", tostring(text_from_file(file.text_file)))
             obj:set(tostring(obj_idx) .. ".1", "effect.name", "標準描画")
             obj_idx = obj_idx + 1
         end
@@ -200,15 +202,53 @@ function P.drop(files, state)
         group_idx = group_idx + 1
     end
 
-    local temp_path = gcmz.create_temp_file("wav2obj.object")
+    if obj_idx == 0 then
+        return
+    end
+
+    local temp_path, temp_err = gcmz.create_temp_file("variable-font.object")
+    if not temp_path then
+        debug_print("一時ファイルの作成に失敗しました: " .. tostring(temp_err))
+        return
+    end
+
     local temp_file = io.open(temp_path, "wb")
     if not temp_file then
-        debug_print("一時ファイルの作成に失敗しました: " .. temp_path)
-        return false
+        debug_print("一時ファイルを開けませんでした: " .. temp_path)
+        return
     end
-    temp_file:write(tostring(obj))
+
+    local write_ok, write_err = temp_file:write(tostring(obj))
     temp_file:close()
-    return true
+    if not write_ok then
+        debug_print("一時ファイルの書き込みに失敗しました: " .. tostring(write_err))
+        return
+    end
+
+    local replacement = {
+        filepath = temp_path,
+        mimetype = "application/aviutl-object",
+        temporary = true,
+    }
+    local output_files = {}
+    local replacement_added = false
+    for _, file in ipairs(files) do
+        if is_supported_file(file) then
+            if not replacement_added then
+                output_files[#output_files + 1] = replacement
+                replacement_added = true
+            end
+        else
+            output_files[#output_files + 1] = file
+        end
+    end
+
+    for index = #files, 1, -1 do
+        files[index] = nil
+    end
+    for index, file in ipairs(output_files) do
+        files[index] = file
+    end
 end
 
 return P
