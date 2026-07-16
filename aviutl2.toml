@@ -1,7 +1,7 @@
 [project]
 id = "rokujyushi.variable-font"
 name = "Variable Font"
-version = "3.0.0"
+version = "3.1.0"
 
 [build_group]
 debug_all = ["cargo build --workspace"]
@@ -60,6 +60,18 @@ destination = "Plugin/GCMZDrops/GCMZScript/VariableFont.lua"
 [artifacts.variable_font_gcmz_ini]
 source = "VariableFont.ini"
 destination = "Plugin/GCMZDrops/GCMZScript/VariableFont.ini"
+
+[artifacts.english_language]
+source = "English.VariableFont.aul2"
+destination = "Language/English.VariableFont.aul2"
+
+[artifacts.simplified_chinese_language]
+source = "简体中文.VariableFont.aul2"
+destination = "Language/简体中文.VariableFont.aul2"
+
+[artifacts.package_text]
+source = "package.txt"
+destination = "package.txt"
 
 [artifacts.readme]
 source = "Plugin_README.md"

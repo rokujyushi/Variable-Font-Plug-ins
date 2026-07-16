@@ -33,7 +33,11 @@ local function is_supported_file(file)
 end
 
 -- ハンドラー名（必須）
-P.name = "テキスト、音声ファイルをVariable Font Textオブジェクトに変換"
+P.name = i18n({
+    ja_JP = "テキスト、音声ファイルをVariable Font Textオブジェクトに変換",
+    en_US = "Convert text and audio files to Variable Font Text objects",
+    zh_CN = "将文本和音频文件转换为Variable Font Text对象",
+})
 
 -- 優先度（省略時は 1000）
 -- 数値が小さいほど先に実行されます
@@ -121,7 +125,11 @@ local function is_conversion_enabled()
 
     local ok, conf = pcall(ini.load, ini_path)
     if not ok or type(conf) ~= "table" then
-        debug_print("VariableFont.ini の読み込みに失敗しました: " .. tostring(conf))
+        debug_print(i18n({
+            ja_JP = "VariableFont.ini の読み込みに失敗しました",
+            en_US = "Failed to load VariableFont.ini",
+            zh_CN = "无法加载VariableFont.ini",
+        }) .. ": " .. tostring(conf))
         return true
     end
     local value = conf:get("Switch", "Handle", nil)
@@ -134,7 +142,11 @@ end
 
 function P.drop(files, state)
     if not is_conversion_enabled() then
-        debug_print("オブジェクト変換は無効です。")
+        debug_print(i18n({
+            ja_JP = "オブジェクト変換は無効です。",
+            en_US = "Object conversion is disabled.",
+            zh_CN = "对象转换已禁用。",
+        }))
         return
     end
     if state and state.alt then
@@ -143,7 +155,11 @@ function P.drop(files, state)
 
     local data = gcmz.get_project_data()
     if not data or not data.rate or not data.scale or data.scale == 0 then
-        debug_print("プロジェクト情報の取得に失敗しました。")
+        debug_print(i18n({
+            ja_JP = "プロジェクト情報の取得に失敗しました。",
+            en_US = "Failed to get project information.",
+            zh_CN = "无法获取项目信息。",
+        }))
         return
     end
 
@@ -165,7 +181,11 @@ function P.drop(files, state)
             if info and info.total_time then
                 duration_sec = info.total_time
             elseif not info then
-                debug_print("メディア情報の取得に失敗しました: " .. tostring(err))
+                debug_print(i18n({
+                    ja_JP = "メディア情報の取得に失敗しました",
+                    en_US = "Failed to get media information",
+                    zh_CN = "无法获取媒体信息",
+                }) .. ": " .. tostring(err))
             end
         end
 
@@ -208,20 +228,32 @@ function P.drop(files, state)
 
     local temp_path, temp_err = gcmz.create_temp_file("variable-font.object")
     if not temp_path then
-        debug_print("一時ファイルの作成に失敗しました: " .. tostring(temp_err))
+        debug_print(i18n({
+            ja_JP = "一時ファイルの作成に失敗しました",
+            en_US = "Failed to create a temporary file",
+            zh_CN = "无法创建临时文件",
+        }) .. ": " .. tostring(temp_err))
         return
     end
 
     local temp_file = io.open(temp_path, "wb")
     if not temp_file then
-        debug_print("一時ファイルを開けませんでした: " .. temp_path)
+        debug_print(i18n({
+            ja_JP = "一時ファイルを開けませんでした",
+            en_US = "Failed to open the temporary file",
+            zh_CN = "无法打开临时文件",
+        }) .. ": " .. temp_path)
         return
     end
 
     local write_ok, write_err = temp_file:write(tostring(obj))
     temp_file:close()
     if not write_ok then
-        debug_print("一時ファイルの書き込みに失敗しました: " .. tostring(write_err))
+        debug_print(i18n({
+            ja_JP = "一時ファイルの書き込みに失敗しました",
+            en_US = "Failed to write the temporary file",
+            zh_CN = "无法写入临时文件",
+        }) .. ": " .. tostring(write_err))
         return
     end
 

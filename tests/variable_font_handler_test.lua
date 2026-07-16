@@ -6,6 +6,12 @@ local handle_value = "true"
 local temp_failure = false
 local temp_path = temp_dir .. "\\generated.object"
 local debug_messages = {}
+local preferred_language = "ja_JP"
+
+function i18n(texts, override_language)
+    local language = override_language or preferred_language
+    return texts[language] or texts.en_US or texts.ja_JP or texts.zh_CN
+end
 
 local function write_file(path, content)
     local file = assert(io.open(path, "wb"))
@@ -91,6 +97,18 @@ gcmz = {
 
 write_file(temp_dir .. "\\VariableFont.ini", "[Switch]\r\nHandle=true\r\n")
 local handler = assert(dofile(root .. "\\VariableFont.lua"))
+
+assert(handler.name == "テキスト、音声ファイルをVariable Font Textオブジェクトに変換")
+
+preferred_language = "en_US"
+local english_handler = assert(dofile(root .. "\\VariableFont.lua"))
+assert(english_handler.name == "Convert text and audio files to Variable Font Text objects")
+
+preferred_language = "zh_CN"
+local chinese_handler = assert(dofile(root .. "\\VariableFont.lua"))
+assert(chinese_handler.name == "将文本和音频文件转换为Variable Font Text对象")
+
+preferred_language = "ja_JP"
 
 local function reset()
     handle_value = "true"
@@ -205,6 +223,28 @@ do
     handler.drop(files, {})
     assert(files[1].filepath == txt, "temp failure must leave files unchanged")
     assert(debug_messages[#debug_messages]:find("forced failure", 1, true))
+end
+
+do
+    reset()
+    preferred_language = "en_US"
+    temp_failure = true
+    local txt = temp_dir .. "\\failure-en.txt"
+    write_file(txt, "failure")
+    local files = { file_entry(txt) }
+    handler.drop(files, {})
+    assert(debug_messages[#debug_messages]:find("Failed to create a temporary file", 1, true))
+end
+
+do
+    reset()
+    preferred_language = "zh_CN"
+    temp_failure = true
+    local txt = temp_dir .. "\\failure-zh.txt"
+    write_file(txt, "failure")
+    local files = { file_entry(txt) }
+    handler.drop(files, {})
+    assert(debug_messages[#debug_messages]:find("无法创建临时文件", 1, true))
 end
 
 print("VariableFont handler tests passed")

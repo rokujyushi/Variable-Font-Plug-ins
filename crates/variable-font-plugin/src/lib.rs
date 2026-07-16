@@ -279,7 +279,8 @@ impl aviutl2::generic::GenericPlugin for VariableFontPlugin {
 
     fn register(&mut self, host: &mut aviutl2::generic::HostAppHandle) {
         host.register_filter_plugin(&self.filter);
-        host.register_layer_menu("VariableFont変換の有効/無効を切替", toggle_handle_switch);
+        let menu_name = aviutl2::config::translate("VariableFont変換の有効/無効を切替");
+        host.register_layer_menu(&menu_name, toggle_handle_switch);
     }
 }
 
@@ -287,11 +288,20 @@ fn toggle_handle_switch() {
     let path = resolve_ini_path();
     let current = read_handle_switch(&path).unwrap_or(true);
     if let Err(error) = write_handle_switch(&path, !current) {
-        tracing::error!("VariableFont.ini の書き換えに失敗しました: {error:#}");
+        tracing::error!(
+            "{}: {error:#}",
+            aviutl2::config::translate("VariableFont.ini の書き換えに失敗しました")
+        );
     } else if current {
-        tracing::info!("VariableFont変換を無効化しました。");
+        tracing::info!(
+            "{}",
+            aviutl2::config::translate("VariableFont変換を無効化しました。")
+        );
     } else {
-        tracing::info!("VariableFont変換を有効化しました。");
+        tracing::info!(
+            "{}",
+            aviutl2::config::translate("VariableFont変換を有効化しました。")
+        );
     }
 }
 

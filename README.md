@@ -18,6 +18,13 @@ PowerShell スクリプトを利用してください。
 
 CargoのDLLは`target\release\`、配布パッケージは`release\`に生成されます。
 
+## 多言語・パッケージ
+
+- 日本語を既定表示とし、`English.VariableFont.aul2`と`简体中文.VariableFont.aul2`を配布パッケージの`Language`フォルダへ同梱します。
+- GCMZ Drops 2のハンドラー名とログは、GCMZの`i18n()`によりシステム優先言語（日本語、英語、簡体中文）に合わせて表示されます。
+- インストール時に表示される`package.txt`は日英中併記です。
+- `package.ini`は静的ファイルを置かず、`aviutl2.toml`の`[release]`を基にaviutl2-cliがリリース生成時に作成します。
+
 ## 配置の目安
 
 - `VariableFont.aux2` は `Plugin` フォルダへ配置
